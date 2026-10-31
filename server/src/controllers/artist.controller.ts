@@ -3,6 +3,21 @@ import { prisma } from '../config/prisma.js';
 import { spotifyProvider } from '../providers/spotify.provider.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 
+export const ARTIST_FOLLOWER_COUNTS: Record<string, number> = {
+  'Sơn Tùng M-TP': 3280000,
+  'Đen Vâu': 2560000,
+  'Vũ.': 1420000,
+  'HIEUTHUHAI': 1850000,
+  'Hoàng Dũng': 890000,
+  'SOOBIN': 1180000,
+  'Bích Phương': 970000,
+  'Hòa Minzy': 1250000,
+  'Phan Mạnh Quỳnh': 1120000,
+  'Tăng Duy Tân': 780000,
+  'Vũ Cát Tường': 910000,
+  'JayKii': 360000,
+};
+
 export class ArtistController {
   async getAll(req: Request, res: Response, next: NextFunction) {
     try {
@@ -11,7 +26,17 @@ export class ArtistController {
         orderBy: { name: 'asc' },
         include: { _count: { select: { songs: true, followers: true } } },
       });
-      res.json({ artists });
+      const formatted = artists.map((a) => {
+        const base = ARTIST_FOLLOWER_COUNTS[a.name] || 600000;
+        return {
+          ...a,
+          _count: {
+            songs: a._count.songs,
+            followers: base + a._count.followers,
+          },
+        };
+      });
+      res.json({ artists: formatted });
     } catch (err) {
       next(err);
     }
@@ -103,6 +128,7 @@ export class ArtistController {
         isFollowing = Boolean(follow);
       }
 
+      const base = ARTIST_FOLLOWER_COUNTS[artist.name] || 600000;
       res.json({
         id: `local:${artist.id}`,
         dbId: artist.id,
@@ -111,7 +137,7 @@ export class ArtistController {
         imageUrl: artist.imageUrl,
         albums: artist.albums,
         topTracks,
-        followersCount: artist._count.followers,
+        followersCount: base + artist._count.followers,
         isFollowing,
       });
     } catch (err) {

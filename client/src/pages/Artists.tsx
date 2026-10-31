@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Users, Search as SearchIcon, ArrowRight, Sparkles } from 'lucide-react';
 import { api } from '../api/client.js';
+import { formatFollowers } from '../utils/format.js';
 
 interface ArtistItem {
   id: string;
@@ -114,8 +115,8 @@ export const ArtistsPage: React.FC = () => {
                 {artist.name}
               </h3>
 
-              <span className="text-[11px] font-mono text-neutral-500 dark:text-neutral-400 mb-2">
-                Nghệ sĩ
+              <span className="text-[11px] font-mono text-traffic-green font-semibold mb-2">
+                {formatFollowers(artist._count?.followers)}
               </span>
 
               {artist.bio && (

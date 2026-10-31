@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Play, Heart, Plus } from 'lucide-react';
+import { Play, Heart, Plus, Headphones } from 'lucide-react';
 import { UnifiedTrack } from '../../types/index.js';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { useAuthStore } from '../../stores/auth-store.js';
-import { formatMs, formatArtists } from '../../utils/format.js';
+import { formatMs, formatArtists, formatPlays, getTrackPlayCount } from '../../utils/format.js';
 import { SourceBadge } from '../common/Badge.js';
 import { api } from '../../api/client.js';
 
@@ -28,6 +28,7 @@ export const SongRow: React.FC<SongRowProps> = ({
   const [isLiking, setIsLiking] = useState(false);
 
   const isCurrent = currentTrack?.id === track.id;
+  const playCount = getTrackPlayCount(track);
 
   const handleRowClick = () => {
     if (isCurrent) {
@@ -101,15 +102,27 @@ export const SongRow: React.FC<SongRowProps> = ({
           >
             {track.title}
           </span>
-          <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate">
-            {formatArtists(track.artists)}
+          <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate flex items-center gap-1.5">
+            <span>{formatArtists(track.artists)}</span>
+            <span className="md:hidden text-neutral-400 dark:text-neutral-500 font-mono text-[10px]">
+              · {formatPlays(playCount)} lượt nghe
+            </span>
           </span>
         </div>
       </div>
 
-      {/* Middle: Album Name (Desktop) */}
+      {/* Middle 1: Album Name (Desktop) */}
       <div className="hidden md:block w-1/4 text-xs text-neutral-500 dark:text-neutral-400 truncate px-2">
         {track.album || '—'}
+      </div>
+
+      {/* Middle 2: Play count (Desktop) */}
+      <div
+        className="hidden lg:flex items-center gap-1.5 w-24 text-xs text-neutral-500 dark:text-neutral-400 font-mono px-2 shrink-0"
+        title={`${playCount.toLocaleString('vi-VN')} lượt nghe`}
+      >
+        <Headphones className="w-3.5 h-3.5 opacity-60 shrink-0" />
+        <span>{formatPlays(playCount)}</span>
       </div>
 
       {/* Source Badge */}

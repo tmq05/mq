@@ -8,7 +8,7 @@ import { SongRow } from '../components/song/SongRow.js';
 import { Button } from '../components/common/Button.js';
 import { usePlayerStore } from '../stores/player-store.js';
 import { UnifiedTrack, Genre, Album } from '../types/index.js';
-import { formatAlbumArtist } from '../utils/format.js';
+import { formatAlbumArtist, formatFollowers } from '../utils/format.js';
 
 export const Home: React.FC = () => {
   const { playTrack } = usePlayerStore();
@@ -205,7 +205,7 @@ export const Home: React.FC = () => {
                   {artist.name}
                 </h4>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  {artist._count?.followers ?? 0} người theo dõi
+                  {formatFollowers(artist._count?.followers)}
                 </p>
               </Link>
             ))}

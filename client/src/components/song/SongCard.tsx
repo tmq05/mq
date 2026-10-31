@@ -1,9 +1,9 @@
 import React from 'react';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, Headphones } from 'lucide-react';
 import { UnifiedTrack } from '../../types/index.js';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { SourceBadge } from '../common/Badge.js';
-import { formatArtists } from '../../utils/format.js';
+import { formatArtists, formatPlays, getTrackPlayCount } from '../../utils/format.js';
 
 interface SongCardProps {
   track: UnifiedTrack;
@@ -13,6 +13,7 @@ interface SongCardProps {
 export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const isCurrent = currentTrack?.id === track.id;
+  const playCount = getTrackPlayCount(track);
 
   const handlePlayClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -72,11 +73,17 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
           {formatArtists(track.artists)}
         </p>
 
-        <div className="mt-auto">
+        <div className="mt-auto flex items-center justify-between gap-1 pt-1">
           <SourceBadge isFullLength={track.isFullLength} source={track.source} />
+          <span
+            className="inline-flex items-center gap-1 text-[10px] font-mono text-neutral-500 dark:text-neutral-400"
+            title={`${playCount.toLocaleString('vi-VN')} lượt nghe`}
+          >
+            <Headphones className="w-3 h-3 opacity-60" />
+            <span>{formatPlays(playCount)}</span>
+          </span>
         </div>
       </div>
     </div>
   );
 };
-

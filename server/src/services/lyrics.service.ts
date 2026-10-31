@@ -8,7 +8,7 @@ import { findCuratedLyrics } from '../utils/synced-lyrics-db.js';
 export interface LyricsResponse {
   syncedLyrics?: string;
   plainLyrics?: string;
-  source: 'lrclib' | 'curated' | 'local' | 'none';
+  source: 'lrclib' | 'curated' | 'local' | 'ovh' | 'none';
 }
 
 function cleanTitleForLyrics(raw: string): string {
@@ -61,7 +61,7 @@ export class LyricsService {
       }
     }
 
-    // 2. Check Curated Synced Lyrics Library (Highest Accuracy for Vietnamese hits)
+    // 2. Check Curated Synced Lyrics Library (Immediate high-precision sync)
     const curatedLrc = findCuratedLyrics(cleanTitle, cleanArtist);
     if (curatedLrc) {
       return {
@@ -75,70 +75,88 @@ export class LyricsService {
     const cached = await cache.get(cacheKey);
     if (cached) {
       try {
-        return JSON.parse(cached);
+        const parsed = JSON.parse(cached);
+        if (parsed.syncedLyrics || parsed.plainLyrics) {
+          return parsed;
+        }
       } catch {
         // proceed
       }
     }
 
-    if (!env.LRCLIB_ENABLED) {
-      return { source: 'none' };
-    }
-
-    // 4. Call LRCLIB API with fallbacks
+    // 4. Try lyrics.ovh API (Fast public lyrics library)
     try {
-      const durationSeconds = durationMs ? Math.round(durationMs / 1000) : undefined;
-      const res = await axios.get('https://lrclib.net/api/get', {
-        params: {
-          artist_name: cleanArtist,
-          track_name: cleanTitle,
-          duration: durationSeconds,
-        },
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        },
-        timeout: 4000,
-      });
-
-      if (res.data?.syncedLyrics || res.data?.plainLyrics) {
+      const ovhRes = await axios.get(
+        `https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`,
+        { timeout: 3000 }
+      );
+      if (ovhRes.data?.lyrics) {
         const data: LyricsResponse = {
-          syncedLyrics: res.data.syncedLyrics || undefined,
-          plainLyrics: res.data.plainLyrics || undefined,
-          source: 'lrclib',
+          plainLyrics: ovhRes.data.lyrics,
+          source: 'ovh',
         };
         await cache.set(cacheKey, JSON.stringify(data), 'EX', 86400);
         return data;
       }
     } catch {
-      // Step 4b: Fallback to LRCLIB Search endpoint with query
+      // lyrics.ovh didn't match, continue to LRCLIB
+    }
+
+    if (env.LRCLIB_ENABLED) {
+      // 5. Try LRCLIB API with short timeout
       try {
-        const searchRes = await axios.get('https://lrclib.net/api/search', {
-          params: { q: `${cleanTitle} ${cleanArtist}` },
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        const durationSeconds = durationMs ? Math.round(durationMs / 1000) : undefined;
+        const res = await axios.get('https://lrclib.net/api/get', {
+          params: {
+            artist_name: cleanArtist,
+            track_name: cleanTitle,
+            duration: durationSeconds,
           },
-          timeout: 4000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          },
+          timeout: 2500,
         });
 
-        if (searchRes.data && Array.isArray(searchRes.data) && searchRes.data.length > 0) {
-          // Prioritize result with syncedLyrics
-          const matchWithSynced = searchRes.data.find((item: any) => Boolean(item.syncedLyrics)) || searchRes.data[0];
+        if (res.data?.syncedLyrics || res.data?.plainLyrics) {
           const data: LyricsResponse = {
-            syncedLyrics: matchWithSynced.syncedLyrics || undefined,
-            plainLyrics: matchWithSynced.plainLyrics || undefined,
+            syncedLyrics: res.data.syncedLyrics || undefined,
+            plainLyrics: res.data.plainLyrics || undefined,
             source: 'lrclib',
           };
           await cache.set(cacheKey, JSON.stringify(data), 'EX', 86400);
           return data;
         }
-      } catch (err: any) {
-        logger.debug({ err: err.message }, 'LRCLIB search fallback failed');
+      } catch {
+        // Fallback search
+        try {
+          const searchRes = await axios.get('https://lrclib.net/api/search', {
+            params: { q: `${cleanTitle} ${cleanArtist}` },
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            },
+            timeout: 2500,
+          });
+
+          if (searchRes.data && Array.isArray(searchRes.data) && searchRes.data.length > 0) {
+            const matchWithSynced =
+              searchRes.data.find((item: any) => Boolean(item.syncedLyrics)) || searchRes.data[0];
+            const data: LyricsResponse = {
+              syncedLyrics: matchWithSynced.syncedLyrics || undefined,
+              plainLyrics: matchWithSynced.plainLyrics || undefined,
+              source: 'lrclib',
+            };
+            await cache.set(cacheKey, JSON.stringify(data), 'EX', 86400);
+            return data;
+          }
+        } catch (err: any) {
+          logger.debug({ err: err.message }, 'LRCLIB search fallback failed');
+        }
       }
     }
 
-    const emptyResult: LyricsResponse = { source: 'none' };
-    await cache.set(cacheKey, JSON.stringify(emptyResult), 'EX', 3600);
-    return emptyResult;
+    // Do NOT cache empty result permanently, so subsequent requests or alternative queries can retry
+    return { source: 'none' };
   }
 }
 

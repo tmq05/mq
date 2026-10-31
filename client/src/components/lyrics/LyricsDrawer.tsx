@@ -21,55 +21,6 @@ export const LyricsDrawer: React.FC = () => {
     setManualOffsetMs(0);
   }, [currentTrack?.id]);
 
-  // Fetch lyrics whenever currentTrack changes
-  useEffect(() => {
-    if (!currentTrack || !isLyricsOpen) return;
-
-    let isCancelled = false;
-    setIsLoading(true);
-    setHasError(false);
-
-    const title = currentTrack.title;
-    const artist =
-      Array.isArray(currentTrack.artists) && currentTrack.artists.length > 0
-        ? currentTrack.artists[0]
-        : '';
-
-    api
-      .get('/lyrics', {
-        params: {
-          title,
-          artist,
-          durationMs: currentTrack.durationMs,
-          songId: currentTrack.id,
-        },
-      })
-      .then((res) => {
-        if (isCancelled) return;
-        if (res.data.syncedLyrics) {
-          const lines = parseLrc(res.data.syncedLyrics);
-          setSyncedLines(lines);
-          setPlainLyrics(null);
-        } else if (res.data.plainLyrics) {
-          setPlainLyrics(res.data.plainLyrics);
-          setSyncedLines([]);
-        } else {
-          setSyncedLines([]);
-          setPlainLyrics(null);
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) setHasError(true);
-      })
-      .finally(() => {
-        if (!isCancelled) setIsLoading(false);
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [currentTrack?.id, isLyricsOpen]);
-
   // Enhanced LRC Parser: supports [offset: ms], [mm:ss.xx], [mm:ss:xx], and multiple tags
   function parseLrc(lrcText: string): LyricsLine[] {
     const lines = lrcText.split('\n');
@@ -103,6 +54,77 @@ export const LyricsDrawer: React.FC = () => {
 
     return result.sort((a, b) => a.timeMs - b.timeMs);
   }
+
+  // Auto-sync plain lyrics if no LRC timestamps exist
+  function autoSyncPlainLyrics(plainText: string, durationMs: number): LyricsLine[] {
+    const rawLines = plainText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && !l.startsWith('[') && !l.endsWith(']'));
+
+    if (rawLines.length === 0) return [];
+
+    const total = rawLines.length;
+    const startMs = 10000;
+    const endMs = Math.max(startMs + 30000, durationMs - 15000);
+    const step = (endMs - startMs) / Math.max(1, total - 1);
+
+    return rawLines.map((text, i) => ({
+      timeMs: Math.round(startMs + i * step),
+      text,
+    }));
+  }
+
+  // Fetch lyrics whenever currentTrack changes
+  useEffect(() => {
+    if (!currentTrack || !isLyricsOpen) return;
+
+    let isCancelled = false;
+    setIsLoading(true);
+    setHasError(false);
+
+    const title = currentTrack.title;
+    const artist =
+      Array.isArray(currentTrack.artists) && currentTrack.artists.length > 0
+        ? currentTrack.artists[0]
+        : '';
+
+    api
+      .get('/lyrics', {
+        params: {
+          title,
+          artist,
+          durationMs: currentTrack.durationMs,
+          songId: currentTrack.id,
+        },
+      })
+      .then((res) => {
+        if (isCancelled) return;
+        if (res.data?.syncedLyrics) {
+          const lines = parseLrc(res.data.syncedLyrics);
+          setSyncedLines(lines);
+          setPlainLyrics(null);
+        } else if (res.data?.plainLyrics) {
+          const duration = currentTrack.durationMs > 0 ? currentTrack.durationMs : 210000;
+          const autoSynced = autoSyncPlainLyrics(res.data.plainLyrics, duration);
+          setSyncedLines(autoSynced);
+          setPlainLyrics(res.data.plainLyrics);
+        } else {
+          setSyncedLines([]);
+          setPlainLyrics(null);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) setHasError(true);
+      })
+      .finally(() => {
+        if (!isCancelled) setIsLoading(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentTrack?.id, isLyricsOpen]);
 
   // Find active line index using current time & manual offset
   const effectiveCurrentMs = currentTime * 1000 - manualOffsetMs;
@@ -244,13 +266,6 @@ export const LyricsDrawer: React.FC = () => {
               </p>
             );
           })}
-
-        {/* Plain Lyrics fallback */}
-        {!isLoading && plainLyrics && (
-          <div className="whitespace-pre-line font-display text-lg leading-relaxed text-neutral-700 dark:text-neutral-300 max-w-xl mx-auto">
-            {plainLyrics}
-          </div>
-        )}
       </div>
     </div>
   );
