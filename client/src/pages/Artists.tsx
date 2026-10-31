@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Users, Search as SearchIcon, ArrowRight, Sparkles } from 'lucide-react';
+import { Users, Search as SearchIcon, ArrowRight } from 'lucide-react';
 import { api } from '../api/client.js';
 import { formatFollowers } from '../utils/format.js';
 
@@ -36,8 +36,8 @@ export const ArtistsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-hairline dark:border-hairline-dark pb-6">
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-xs font-mono text-neutral-600 dark:text-neutral-300">
-            <Sparkles className="w-3.5 h-3.5 text-traffic-green" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200/80 dark:border-neutral-700/60 shadow-sm text-xs font-sans font-medium text-neutral-700 dark:text-neutral-300">
+            <Users className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
             <span>Kho nghệ sĩ Việt Nam & Quốc tế</span>
           </div>
           <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-ink dark:text-white">

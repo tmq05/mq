@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Play, Sparkles, Flame, Radio, Disc3, Users, ArrowRight } from 'lucide-react';
+import { Play, Music, Flame, Radio, Disc3, Users, ArrowRight } from 'lucide-react';
 import { api } from '../api/client.js';
 import { SongCard } from '../components/song/SongCard.js';
 import { SongRow } from '../components/song/SongRow.js';
@@ -75,8 +75,8 @@ export const Home: React.FC = () => {
     <div className="space-y-14 pb-12">
       {/* Hero Section matching DESIGN.md (Ollama minimalist README style) */}
       <section className="text-center pt-6 pb-2 max-w-3xl mx-auto space-y-4">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-xs font-mono text-neutral-600 dark:text-neutral-300">
-          <Sparkles className="w-3.5 h-3.5 text-traffic-green" />
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200/80 dark:border-neutral-700/60 shadow-sm text-xs font-sans font-medium text-neutral-700 dark:text-neutral-300">
+          <Music className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
           <span>Âm nhạc đa nguồn · Trải nghiệm liền mạch</span>
         </div>
 

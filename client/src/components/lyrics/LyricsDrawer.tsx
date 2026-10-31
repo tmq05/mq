@@ -210,19 +210,6 @@ export const LyricsDrawer: React.FC = () => {
           </div>
         )}
 
-        {/* Instrumental Intro Countdown Badge */}
-        {!isLoading && activeIndex === -1 && syncedLines.length > 0 && (
-          <div className="py-6 flex flex-col items-center justify-center animate-in fade-in duration-300">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-traffic-green/10 border border-traffic-green/20 text-traffic-green text-xs font-mono font-medium">
-              <span className="w-2 h-2 rounded-full bg-traffic-green animate-ping" />
-              <span>
-                Đoạn dạo nhạc · Lời bài hát sẽ vào sau{' '}
-                {Math.max(1, Math.ceil((syncedLines[0].timeMs - currentMs) / 1000))}s
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Synced Lyrics Rendering */}
         {!isLoading &&
           syncedLines.length > 0 &&
