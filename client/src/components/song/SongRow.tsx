@@ -3,7 +3,7 @@ import { Play, Heart, Plus } from 'lucide-react';
 import { UnifiedTrack } from '../../types/index.js';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { useAuthStore } from '../../stores/auth-store.js';
-import { formatMs } from '../../utils/format.js';
+import { formatMs, formatArtists } from '../../utils/format.js';
 import { SourceBadge } from '../common/Badge.js';
 import { api } from '../../api/client.js';
 
@@ -67,7 +67,7 @@ export const SongRow: React.FC<SongRowProps> = ({
       {/* Left: Index/Play + Cover + Title/Artist */}
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
         {/* Index or Play icon */}
-        <div className="w-5 flex items-center justify-center shrink-0 text-xs text-mute font-mono">
+        <div className="w-5 flex items-center justify-center shrink-0 text-xs text-neutral-500 dark:text-neutral-400 font-mono">
           {isCurrent && isPlaying ? (
             <div className="flex items-end gap-0.5 h-3.5">
               <span className="w-0.5 h-full bg-primary dark:bg-white animate-pulse" />
@@ -96,19 +96,19 @@ export const SongRow: React.FC<SongRowProps> = ({
         <div className="flex flex-col min-w-0 pr-2">
           <span
             className={`text-sm font-medium truncate ${
-              isCurrent ? 'text-primary dark:text-white font-semibold' : 'text-ink dark:text-on-dark'
+              isCurrent ? 'text-black dark:text-white font-semibold' : 'text-neutral-900 dark:text-white'
             }`}
           >
             {track.title}
           </span>
-          <span className="text-xs text-body dark:text-mute truncate">
-            {track.artists.join(', ')}
+          <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate">
+            {formatArtists(track.artists)}
           </span>
         </div>
       </div>
 
       {/* Middle: Album Name (Desktop) */}
-      <div className="hidden md:block w-1/4 text-xs text-body dark:text-mute truncate px-2">
+      <div className="hidden md:block w-1/4 text-xs text-neutral-500 dark:text-neutral-400 truncate px-2">
         {track.album || '—'}
       </div>
 
@@ -125,14 +125,14 @@ export const SongRow: React.FC<SongRowProps> = ({
           className={`p-1.5 rounded-pill transition-transform active:scale-90 ${
             isLiked
               ? 'text-red-500 fill-red-500'
-              : 'text-mute opacity-0 group-hover:opacity-100 hover:text-ink dark:hover:text-white'
+              : 'text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-ink dark:hover:text-white'
           }`}
           aria-label="Thích"
         >
           <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
         </button>
 
-        <span className="text-xs font-mono text-mute w-10 text-right">
+        <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400 w-10 text-right">
           {track.durationMs > 0 ? formatMs(track.durationMs) : '—'}
         </span>
 

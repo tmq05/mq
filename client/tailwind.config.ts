@@ -8,6 +8,7 @@ export default {
       colors: {
         primary: '#000000',
         'on-primary': '#ffffff',
+        'on-dark': '#ffffff',
         ink: {
           DEFAULT: '#000000',
           deep: '#090909',

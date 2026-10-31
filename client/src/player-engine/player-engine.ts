@@ -11,7 +11,7 @@ export class PlayerEngine {
     this.setupShortcuts();
   }
 
-  private createAdapter(type: 'audio' | 'youtube' | 'spotify' | 'preview'): PlayerAdapter {
+  private createAdapter(type: 'audio' | 'youtube' | 'spotify' | 'zingmp3' | 'preview'): PlayerAdapter {
     const events = {
       onTimeUpdate: (currentTime: number, duration: number) => {
         usePlayerStore.getState().syncTime(currentTime, duration);
@@ -36,7 +36,12 @@ export class PlayerEngine {
   }
 
   async loadTrack(track: UnifiedTrack, autoPlay = true): Promise<void> {
-    const targetType = track.playbackType === 'youtube' ? 'youtube' : 'audio';
+    let targetType: 'audio' | 'youtube' | 'spotify' | 'zingmp3' = 'audio';
+    if (track.playbackType === 'youtube' || (track.embedId && track.embedId.length === 11)) {
+      targetType = 'youtube';
+    } else {
+      targetType = 'audio';
+    }
 
     // If adapter type changed, clean up previous adapter completely
     if (!this.currentAdapter || this.currentAdapter.type !== targetType) {
@@ -87,7 +92,7 @@ export class PlayerEngine {
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
-      artist: track.artists.join(', '),
+      artist: Array.isArray(track.artists) ? track.artists.join(', ') : (track.artists || 'Nghệ sĩ'),
       album: track.album || 'mq Music',
       artwork: track.coverUrl
         ? [

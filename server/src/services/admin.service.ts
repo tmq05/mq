@@ -61,6 +61,7 @@ export class AdminService {
       deezer: { enabled: env.DEEZER_ENABLED, status: 'operational', keyRequired: false },
       itunes: { enabled: env.ITUNES_ENABLED, status: 'operational', keyRequired: false },
       spotify: { enabled: env.SPOTIFY_ENABLED, status: env.SPOTIFY_ENABLED ? 'operational' : 'disabled', keyRequired: true, hasKey: Boolean(env.SPOTIFY_CLIENT_ID) },
+      zingmp3: { enabled: env.ZINGMP3_ENABLED, status: 'operational', keyRequired: false },
       lrclib: { enabled: env.LRCLIB_ENABLED, status: 'operational', keyRequired: false },
     };
   }

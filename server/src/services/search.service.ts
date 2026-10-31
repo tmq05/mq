@@ -29,10 +29,13 @@ export class SearchService {
     // Helper score: higher score is preferred
     const getTrackScore = (t: UnifiedTrack): number => {
       let score = 0;
+      if (t.source === 'spotify') score += 500; // Prioritize Spotify source
       if (t.source === 'local') score += 100;
       if (t.isFullLength) score += 50;
       if (t.playbackType === 'audio') score += 30;
+      if (t.playbackType === 'zingmp3') score += 25;
       if (t.playbackType === 'youtube') score += 20;
+      if (t.playbackType === 'spotify') score += 20;
       if (t.coverUrl) score += 5;
       return score;
     };
@@ -143,6 +146,13 @@ export class SearchService {
 
     // 4. Deduplicate tracks
     const finalTracks = this.deduplicateTracks(mergedTracks);
+
+    // Prioritize Spotify tracks at the very top of search results
+    finalTracks.sort((a, b) => {
+      const aIsSpotify = a.source === 'spotify' ? 1 : 0;
+      const bIsSpotify = b.source === 'spotify' ? 1 : 0;
+      return bIsSpotify - aIsSpotify;
+    });
 
     // 5. Deduplicate artists by normalized name
     const uniqueArtists: UnifiedArtist[] = [];

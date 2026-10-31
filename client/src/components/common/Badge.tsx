@@ -16,6 +16,7 @@ export const SourceBadge: React.FC<BadgeProps> = ({ isFullLength = true, source,
     deezer: 'Deezer',
     itunes: 'Apple Music',
     spotify: 'Spotify',
+    zingmp3: 'Zing MP3',
   };
 
   return (

@@ -6,6 +6,7 @@ import { deezerProvider } from './deezer.provider.js';
 import { itunesProvider } from './itunes.provider.js';
 import { youtubeProvider } from './youtube.provider.js';
 import { spotifyProvider } from './spotify.provider.js';
+import { zingMp3Provider } from './zingmp3.provider.js';
 
 export class ProviderRegistry {
   private providers = new Map<MusicSource, MusicProvider>();
@@ -18,6 +19,7 @@ export class ProviderRegistry {
     this.register(itunesProvider);
     this.register(youtubeProvider);
     this.register(spotifyProvider);
+    this.register(zingMp3Provider);
   }
 
   register(provider: MusicProvider): void {

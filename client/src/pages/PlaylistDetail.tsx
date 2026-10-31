@@ -8,6 +8,7 @@ import { usePlayerStore } from '../stores/player-store.js';
 import { SongRow } from '../components/song/SongRow.js';
 import { Button } from '../components/common/Button.js';
 import { Playlist, UnifiedTrack } from '../types/index.js';
+import { formatArtists } from '../utils/format.js';
 
 export const PlaylistDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -215,7 +216,7 @@ export const PlaylistDetailPage: React.FC = () => {
                     <img src={track.coverUrl} alt={track.title} className="w-8 h-8 rounded object-cover" />
                     <div className="truncate">
                       <p className="text-xs font-medium text-ink dark:text-white truncate">{track.title}</p>
-                      <p className="text-[10px] text-mute truncate">{track.artists.join(', ')}</p>
+                      <p className="text-[10px] text-mute truncate">{formatArtists(track.artists)}</p>
                     </div>
                   </div>
                   <Button

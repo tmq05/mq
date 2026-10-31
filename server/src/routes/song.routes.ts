@@ -6,9 +6,10 @@ const router = Router();
 
 router.get('/trending', songController.getTrending);
 router.get('/vpop', songController.getVietnameseHits);
-router.get('/:id', songController.getSong);
-router.get('/:id/stream', songController.streamSong);
 router.get('/stream-info/:source/:sourceId', songController.getStreamInfo);
+router.get('/:source/:sourceId/stream-info', songController.getStreamInfo);
+router.get('/:id/stream', songController.streamSong);
+router.get('/:id', songController.getSong);
 router.post('/like', requireAuth, songController.toggleLike);
 router.post('/record-play', optionalAuth, songController.recordPlay);
 

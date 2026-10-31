@@ -65,14 +65,19 @@ export class YouTubeAdapter implements PlayerAdapter {
         }
       }
 
-      if (this.player && this.isReady) {
-        if (autoPlay) {
-          this.player.loadVideoById(videoId);
-        } else {
-          this.player.cueVideoById(videoId);
+      if (this.player && this.isReady && typeof this.player.loadVideoById === 'function') {
+        try {
+          if (autoPlay) {
+            this.player.loadVideoById(videoId);
+          } else {
+            this.player.cueVideoById(videoId);
+          }
+          resolve();
+          return;
+        } catch {
+          this.player = null;
+          this.isReady = false;
         }
-        resolve();
-        return;
       }
 
       this.player = new window.YT.Player('youtube-player-mount', {

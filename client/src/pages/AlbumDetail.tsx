@@ -6,7 +6,7 @@ import { api } from '../api/client.js';
 import { usePlayerStore } from '../stores/player-store.js';
 import { SongRow } from '../components/song/SongRow.js';
 import { Button } from '../components/common/Button.js';
-import { formatDate } from '../utils/format.js';
+import { formatDate, formatAlbumArtist } from '../utils/format.js';
 import { Album, UnifiedTrack } from '../types/index.js';
 
 export const AlbumDetailPage: React.FC = () => {
@@ -62,7 +62,9 @@ export const AlbumDetailPage: React.FC = () => {
           <h1 className="font-display font-black text-2xl sm:text-4xl text-ink dark:text-white truncate">
             {album.title}
           </h1>
-          <p className="text-sm font-medium text-body dark:text-mute">{album.artist || 'Nhiều nghệ sĩ'}</p>
+          <p className="text-sm font-medium text-body dark:text-mute">
+            {formatAlbumArtist(album.artist)}
+          </p>
           {album.releaseDate && (
             <div className="flex items-center justify-center sm:justify-start gap-1 text-xs text-mute mt-1">
               <Calendar className="w-3.5 h-3.5" />

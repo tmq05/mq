@@ -1,4 +1,4 @@
-export type PlaybackType = 'audio' | 'youtube' | 'spotify' | 'preview';
+export type PlaybackType = 'audio' | 'youtube' | 'spotify' | 'zingmp3' | 'preview';
 
 export type MusicSource =
   | 'local'
@@ -7,7 +7,8 @@ export type MusicSource =
   | 'youtube'
   | 'deezer'
   | 'itunes'
-  | 'spotify';
+  | 'spotify'
+  | 'zingmp3';
 
 export interface UnifiedTrack {
   id: string; // e.g. "audius:12345" or "deezer:67890" or "local:uuid"

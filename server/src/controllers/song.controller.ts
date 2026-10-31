@@ -4,8 +4,10 @@ import fs from 'fs';
 import { songService } from '../services/song.service.js';
 import { prisma } from '../config/prisma.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
-import { streamAudioFile } from '../utils/range-stream.js';
+import { streamAudioFile, pipeRemoteAudio } from '../utils/range-stream.js';
 import { env } from '../config/env.js';
+import { spotifyProvider } from '../providers/spotify.provider.js';
+import { zingMp3Provider } from '../providers/zingmp3.provider.js';
 
 export class SongController {
   async getSong(req: Request, res: Response, next: NextFunction) {
@@ -25,6 +27,100 @@ export class SongController {
   async streamSong(req: Request, res: Response, next: NextFunction) {
     try {
       const id = req.params.id;
+
+      // Handle Spotify stream requests
+      if (id.startsWith('spotify:')) {
+        const sourceId = id.replace(/^spotify:/, '');
+        const track = await spotifyProvider.getTrack(sourceId);
+        if (track) {
+          if (track.previewUrl && track.previewUrl.startsWith('http')) {
+            const piped = await pipeRemoteAudio(track.previewUrl, req, res);
+            if (piped) return;
+          }
+
+          const q = encodeURIComponent(`${track.title} ${track.artists[0] || ''}`);
+          try {
+            const itunesRes = await fetch(`https://itunes.apple.com/search?term=${q}&entity=song&limit=1`);
+            const itunesData = (await itunesRes.json()) as any;
+            const preview = itunesData.results?.[0]?.previewUrl;
+            if (preview) {
+              const piped = await pipeRemoteAudio(preview, req, res);
+              if (piped) return;
+            }
+          } catch {
+            // ignore
+          }
+
+          try {
+            const deezerRes = await fetch(`https://api.deezer.com/search?q=${q}&limit=1`);
+            const deezerData = (await deezerRes.json()) as any;
+            const preview = deezerData.data?.[0]?.preview;
+            if (preview) {
+              const piped = await pipeRemoteAudio(preview, req, res);
+              if (piped) return;
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        // Reliable fallback to sample audio so sound ALWAYS plays
+        const sampleCandidates = [
+          path.resolve(process.cwd(), env.UPLOAD_DIR, 'audio', 'sample.mp3'),
+          path.resolve(process.cwd(), 'server', env.UPLOAD_DIR, 'audio', 'sample.mp3'),
+          path.resolve(process.cwd(), 'uploads', 'audio', 'sample.mp3'),
+        ];
+        const found = sampleCandidates.find((p) => fs.existsSync(p));
+        if (found) {
+          streamAudioFile(found, req, res);
+          return;
+        }
+      }
+
+      // Handle Zing MP3 stream requests
+      if (id.startsWith('zingmp3:')) {
+        const sourceId = id.replace(/^zingmp3:/, '');
+        const track = await zingMp3Provider.getTrack(sourceId);
+        if (track) {
+          const q = encodeURIComponent(`${track.title} ${track.artists[0] || ''}`);
+          try {
+            const itunesRes = await fetch(`https://itunes.apple.com/search?term=${q}&entity=song&limit=1`);
+            const itunesData = (await itunesRes.json()) as any;
+            const preview = itunesData.results?.[0]?.previewUrl;
+            if (preview) {
+              const piped = await pipeRemoteAudio(preview, req, res);
+              if (piped) return;
+            }
+          } catch {
+            // ignore
+          }
+
+          try {
+            const deezerRes = await fetch(`https://api.deezer.com/search?q=${q}&limit=1`);
+            const deezerData = (await deezerRes.json()) as any;
+            const preview = deezerData.data?.[0]?.preview;
+            if (preview) {
+              const piped = await pipeRemoteAudio(preview, req, res);
+              if (piped) return;
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        // Reliable fallback to sample audio so sound ALWAYS plays
+        const sampleCandidates = [
+          path.resolve(process.cwd(), env.UPLOAD_DIR, 'audio', 'sample.mp3'),
+          path.resolve(process.cwd(), 'server', env.UPLOAD_DIR, 'audio', 'sample.mp3'),
+          path.resolve(process.cwd(), 'uploads', 'audio', 'sample.mp3'),
+        ];
+        const found = sampleCandidates.find((p) => fs.existsSync(p));
+        if (found) {
+          streamAudioFile(found, req, res);
+          return;
+        }
+      }
+
       const cleanId = id.replace(/^local:/, '');
 
       const song = await prisma.song.findFirst({
@@ -42,14 +138,25 @@ export class SongController {
       // Check if file is stored locally
       let audioPath = '';
       if (song.streamUrl && song.streamUrl.startsWith('/uploads/')) {
-        audioPath = path.resolve(process.cwd(), song.streamUrl.replace('/uploads/', env.UPLOAD_DIR + '/'));
+        const rel = song.streamUrl.replace('/uploads/', '');
+        const candidates = [
+          path.resolve(process.cwd(), env.UPLOAD_DIR, rel),
+          path.resolve(process.cwd(), 'server', env.UPLOAD_DIR, rel),
+          path.resolve(process.cwd(), 'uploads', rel),
+        ];
+        audioPath = candidates.find((p) => fs.existsSync(p)) || '';
       }
 
       // Fallback to sample MP3 if not found or if path is sample
       if (!audioPath || !fs.existsSync(audioPath)) {
-        const sampleAudio = path.resolve(process.cwd(), env.UPLOAD_DIR, 'audio', 'sample.mp3');
-        if (fs.existsSync(sampleAudio)) {
-          audioPath = sampleAudio;
+        const sampleCandidates = [
+          path.resolve(process.cwd(), env.UPLOAD_DIR, 'audio', 'sample.mp3'),
+          path.resolve(process.cwd(), 'server', env.UPLOAD_DIR, 'audio', 'sample.mp3'),
+          path.resolve(process.cwd(), 'uploads', 'audio', 'sample.mp3'),
+        ];
+        const found = sampleCandidates.find((p) => fs.existsSync(p));
+        if (found) {
+          audioPath = found;
         } else {
           res.status(404).json({ message: 'Tệp âm thanh nguồn chưa sẵn sàng' });
           return;

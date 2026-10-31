@@ -8,6 +8,7 @@ import { SongRow } from '../components/song/SongRow.js';
 import { Button } from '../components/common/Button.js';
 import { usePlayerStore } from '../stores/player-store.js';
 import { UnifiedTrack, Genre, Album } from '../types/index.js';
+import { formatAlbumArtist } from '../utils/format.js';
 
 export const Home: React.FC = () => {
   const { playTrack } = usePlayerStore();
@@ -58,7 +59,7 @@ export const Home: React.FC = () => {
     <div className="space-y-16 pb-12">
       {/* Hero Section matching DESIGN.md (Ollama minimalist README style) */}
       <section className="text-center pt-8 pb-4 max-w-3xl mx-auto space-y-5">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-xs font-mono text-body dark:text-mute">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-xs font-mono text-neutral-600 dark:text-neutral-300">
           <Sparkles className="w-3.5 h-3.5 text-traffic-green" />
           <span>Âm nhạc đa nguồn · Không ngắt quãng</span>
         </div>
@@ -67,7 +68,7 @@ export const Home: React.FC = () => {
           Âm thanh thuần khiết, trải nghiệm tối giản.
         </h1>
 
-        <p className="text-base text-body dark:text-mute max-w-xl mx-auto leading-relaxed">
+        <p className="text-base text-neutral-600 dark:text-neutral-300 max-w-xl mx-auto leading-relaxed">
           Tìm kiếm và phát hàng triệu ca khúc từ Audius, Jamendo, Deezer, YouTube và kho nhạc
           Việt Nam tuyển chọn — không quảng cáo gây rối, hoàn toàn liền mạch.
         </p>
@@ -100,7 +101,7 @@ export const Home: React.FC = () => {
           {trendingData && trendingData.length > 0 && (
             <button
               onClick={handlePlayAllTrending}
-              className="text-xs font-medium text-body dark:text-mute hover:text-ink dark:hover:text-white flex items-center gap-1"
+              className="text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:text-ink dark:hover:text-white flex items-center gap-1"
             >
               Phát tất cả
             </button>
@@ -207,11 +208,11 @@ export const Home: React.FC = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 </div>
-                <h4 className="font-semibold text-sm truncate text-ink dark:text-white">
+                <h4 className="font-semibold text-sm truncate text-neutral-900 dark:text-white">
                   {album.title}
                 </h4>
-                <p className="text-xs text-body dark:text-mute truncate">
-                  {album.artist || 'Nghệ sĩ'}
+                <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">
+                  {formatAlbumArtist(album.artist)}
                 </p>
               </Link>
             ))}

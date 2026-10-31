@@ -3,6 +3,27 @@
 @tailwind utilities;
 
 @layer base {
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html.dark body {
+    color: #f4f4f5;
+    background-color: #0a0a0a;
+  }
+
+  .dark .text-ink {
+    color: #ffffff !important;
+  }
+
+  .dark .text-body {
+    color: #d4d4d8 !important;
+  }
+
+  .dark .text-mute {
+    color: #a1a1aa !important;
+  }
+
   body {
     font-family: ui-sans-serif, Inter, system-ui, -apple-system, sans-serif;
   }

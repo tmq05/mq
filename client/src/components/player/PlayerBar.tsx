@@ -14,7 +14,7 @@ import {
   Tv,
 } from 'lucide-react';
 import { usePlayerStore } from '../../stores/player-store.js';
-import { formatDuration } from '../../utils/format.js';
+import { formatDuration, formatArtists } from '../../utils/format.js';
 import { SourceBadge } from '../common/Badge.js';
 
 export const PlayerBar: React.FC = () => {
@@ -93,11 +93,11 @@ export const PlayerBar: React.FC = () => {
           </div>
 
           <div className="flex flex-col min-w-0">
-            <span className="text-sm font-semibold truncate text-ink dark:text-on-dark">
+            <span className="text-sm font-semibold truncate text-neutral-900 dark:text-white">
               {currentTrack.title}
             </span>
-            <span className="text-xs text-body dark:text-mute truncate">
-              {currentTrack.artists.join(', ')}
+            <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate">
+              {formatArtists(currentTrack.artists)}
             </span>
             <div className="mt-0.5">
               <SourceBadge isFullLength={currentTrack.isFullLength} source={currentTrack.source} />
@@ -112,7 +112,7 @@ export const PlayerBar: React.FC = () => {
             <button
               onClick={toggleShuffle}
               className={`p-1.5 rounded-pill transition-colors ${
-                isShuffle ? 'text-primary dark:text-white font-bold' : 'text-mute hover:text-ink dark:hover:text-white'
+                isShuffle ? 'text-black dark:text-white font-bold' : 'text-neutral-400 hover:text-black dark:hover:text-white'
               }`}
               title="Phát ngẫu nhiên"
             >
@@ -122,7 +122,7 @@ export const PlayerBar: React.FC = () => {
             {/* Previous */}
             <button
               onClick={previous}
-              className="p-1.5 text-ink dark:text-on-dark hover:opacity-80 active:scale-95 transition-transform"
+              className="p-1.5 text-neutral-800 dark:text-white hover:opacity-80 active:scale-95 transition-transform"
               title="Bài trước (Mũi tên trái)"
             >
               <SkipBack className="w-5 h-5 fill-current" />
@@ -131,7 +131,7 @@ export const PlayerBar: React.FC = () => {
             {/* Play/Pause Button */}
             <button
               onClick={togglePlay}
-              className="w-10 h-10 rounded-pill bg-primary dark:bg-white text-on-primary dark:text-black flex items-center justify-center shadow-md active:scale-95 transition-transform"
+              className="w-10 h-10 rounded-pill bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shadow-md active:scale-95 transition-transform"
               title="Phát/Tạm dừng (Space)"
             >
               {isPlaying ? (
@@ -144,7 +144,7 @@ export const PlayerBar: React.FC = () => {
             {/* Next */}
             <button
               onClick={next}
-              className="p-1.5 text-ink dark:text-on-dark hover:opacity-80 active:scale-95 transition-transform"
+              className="p-1.5 text-neutral-800 dark:text-white hover:opacity-80 active:scale-95 transition-transform"
               title="Bài tiếp theo (Mũi tên phải)"
             >
               <SkipForward className="w-5 h-5 fill-current" />
@@ -155,8 +155,8 @@ export const PlayerBar: React.FC = () => {
               onClick={handleRepeatClick}
               className={`p-1.5 rounded-pill transition-colors ${
                 repeatMode !== 'off'
-                  ? 'text-primary dark:text-white font-bold'
-                  : 'text-mute hover:text-ink dark:hover:text-white'
+                  ? 'text-black dark:text-white font-bold'
+                  : 'text-neutral-400 hover:text-black dark:hover:text-white'
               }`}
               title={`Lặp lại: ${repeatMode}`}
             >
@@ -165,7 +165,7 @@ export const PlayerBar: React.FC = () => {
           </div>
 
           {/* Progress Slider */}
-          <div className="w-full flex items-center gap-2.5 text-[11px] font-mono text-mute">
+          <div className="w-full flex items-center gap-2.5 text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
             <span>{formatDuration(effectiveTime)}</span>
             <div className="relative flex-1 flex items-center h-4 cursor-pointer group">
               <input
@@ -196,8 +196,12 @@ export const PlayerBar: React.FC = () => {
 
         {/* Right: Actions & Volume */}
         <div className="flex items-center justify-end gap-3 w-1/4">
-          {/* Mini video toggle (for YouTube tracks) */}
-          {currentTrack.playbackType === 'youtube' && (
+          {/* Mini video/embed toggle (for YouTube, Zing MP3, Spotify tracks) */}
+          {(currentTrack.playbackType === 'youtube' ||
+            currentTrack.source === 'youtube' ||
+            currentTrack.source === 'zingmp3' ||
+            currentTrack.source === 'spotify' ||
+            Boolean(currentTrack.embedId)) && (
             <button
               onClick={() => setMiniVideoOpen(!miniVideoOpen)}
               className={`p-2 rounded-pill transition-colors ${
@@ -205,7 +209,7 @@ export const PlayerBar: React.FC = () => {
                   ? 'bg-neutral-200 dark:bg-neutral-800 text-ink dark:text-white'
                   : 'text-mute hover:text-ink dark:hover:text-white'
               }`}
-              title="Bật/Tắt khung xem video"
+              title="Bật/Tắt khung phát video hoặc widget nhúng"
             >
               <Tv className="w-4 h-4" />
             </button>

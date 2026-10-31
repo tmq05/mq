@@ -8,7 +8,7 @@ export interface PlayerEvents {
 }
 
 export interface PlayerAdapter {
-  readonly type: 'audio' | 'youtube' | 'spotify' | 'preview';
+  readonly type: 'audio' | 'youtube' | 'spotify' | 'zingmp3' | 'preview';
   load(track: UnifiedTrack, autoPlay: boolean): Promise<void>;
   play(): Promise<void>;
   pause(): void;

@@ -3,6 +3,7 @@ import { Play, Pause } from 'lucide-react';
 import { UnifiedTrack } from '../../types/index.js';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { SourceBadge } from '../common/Badge.js';
+import { formatArtists } from '../../utils/format.js';
 
 interface SongCardProps {
   track: UnifiedTrack;
@@ -62,13 +63,13 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
       <div className="flex flex-col min-w-0">
         <h4
           className={`font-semibold text-sm truncate mb-0.5 ${
-            isCurrent ? 'text-primary dark:text-white font-bold' : 'text-ink dark:text-on-dark'
+            isCurrent ? 'text-black dark:text-white font-bold' : 'text-neutral-900 dark:text-white'
           }`}
         >
           {track.title}
         </h4>
-        <p className="text-xs text-body dark:text-mute truncate mb-2">
-          {track.artists.join(', ')}
+        <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate mb-2">
+          {formatArtists(track.artists)}
         </p>
 
         <div className="mt-auto">

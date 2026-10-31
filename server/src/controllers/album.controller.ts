@@ -9,7 +9,17 @@ export class AlbumController {
         orderBy: { createdAt: 'desc' },
         include: { artist: true },
       });
-      res.json({ albums });
+
+      const formatted = albums.map((album) => ({
+        id: `local:${album.id}`,
+        dbId: album.id,
+        title: album.title,
+        coverUrl: album.coverUrl,
+        releaseDate: album.releaseDate,
+        artist: album.artist?.name || 'Nhiều nghệ sĩ',
+      }));
+
+      res.json({ albums: formatted });
     } catch (err) {
       next(err);
     }

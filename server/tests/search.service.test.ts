@@ -48,5 +48,35 @@ describe('Search & Deduplication Utilities', () => {
     expect(deduplicated[0].source).toBe('local');
     expect(deduplicated[0].isFullLength).toBe(true);
   });
+
+  it('should rank Zing MP3 full track higher than a preview track in deduplication', () => {
+    const tracks: UnifiedTrack[] = [
+      {
+        id: 'itunes:999',
+        source: 'itunes',
+        sourceId: '999',
+        title: 'Lạc Trôi',
+        artists: ['Sơn Tùng M-TP'],
+        durationMs: 232000,
+        playbackType: 'preview',
+        isFullLength: false,
+      },
+      {
+        id: 'zingmp3:ZW78DIEO',
+        source: 'zingmp3',
+        sourceId: 'ZW78DIEO',
+        title: 'Lạc Trôi',
+        artists: ['Sơn Tùng M-TP'],
+        durationMs: 233000,
+        playbackType: 'zingmp3',
+        isFullLength: true,
+      },
+    ];
+
+    const deduplicated = searchService.deduplicateTracks(tracks);
+    expect(deduplicated.length).toBe(1);
+    expect(deduplicated[0].source).toBe('zingmp3');
+    expect(deduplicated[0].isFullLength).toBe(true);
+  });
 });
 

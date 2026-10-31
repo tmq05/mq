@@ -23,6 +23,7 @@ import { AdminDashboard } from './pages/AdminDashboard.js';
 import { useAuthStore } from './stores/auth-store.js';
 import { usePlayerStore } from './stores/player-store.js';
 import { Button } from './components/common/Button.js';
+import { ErrorBoundary } from './components/common/ErrorBoundary.js';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,18 +71,20 @@ export const AppContent: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 pt-6 pb-28">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/library" element={<LibraryPage />} />
-          <Route path="/playlists/:id" element={<PlaylistDetailPage />} />
-          <Route path="/albums/:id" element={<AlbumDetailPage />} />
-          <Route path="/credits" element={<CreditsPage />} />
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/library" element={<LibraryPage />} />
+            <Route path="/playlists/:id" element={<PlaylistDetailPage />} />
+            <Route path="/albums/:id" element={<AlbumDetailPage />} />
+            <Route path="/credits" element={<CreditsPage />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
 
       <Footer />
@@ -103,11 +106,13 @@ export const AppContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 

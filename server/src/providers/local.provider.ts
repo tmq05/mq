@@ -10,6 +10,7 @@ import {
   UnifiedPlaylist,
 } from './music-provider.interface.js';
 import { removeAccents } from '../utils/unaccent.js';
+import { resolveExactFullTrack } from '../utils/track-resolver.js';
 
 export class LocalProvider implements MusicProvider {
   readonly name: MusicSource = 'local';
@@ -29,9 +30,10 @@ export class LocalProvider implements MusicProvider {
       album: song.album || song.albumRef?.title || '',
       coverUrl: song.coverUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80',
       durationMs: song.durationMs || 0,
-      playbackType: 'audio',
+      playbackType: (song.playbackType as any) || (song.embedId ? 'youtube' : 'audio'),
+      embedId: song.embedId || undefined,
       streamUrl: song.streamUrl || `/api/songs/${song.id}/stream`,
-      isFullLength: true,
+      isFullLength: song.isFullLength ?? true,
       lyrics: song.lyrics || undefined,
     };
   }
@@ -203,6 +205,19 @@ export class LocalProvider implements MusicProvider {
   async getStreamInfo(sourceId: string): Promise<StreamInfo | null> {
     const track = await this.getTrack(sourceId);
     if (!track) return null;
+    if (track.embedId || track.playbackType === 'youtube') {
+      return {
+        playbackType: 'youtube',
+        embedId: track.embedId,
+      };
+    }
+    const vid = await resolveExactFullTrack(track.title, track.artists[0] || '');
+    if (vid) {
+      return {
+        playbackType: 'youtube',
+        embedId: vid,
+      };
+    }
     return {
       streamUrl: track.streamUrl || `/api/songs/${track.id}/stream`,
       playbackType: 'audio',

@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 // Load .env
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-// Also try parent .env if any
+dotenv.config({ path: path.resolve(process.cwd(), 'server/.env'), override: true });
 dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 
 const envSchema = z.object({
@@ -43,6 +43,8 @@ const envSchema = z.object({
   SPOTIFY_ENABLED: z.coerce.boolean().default(false),
   SPOTIFY_CLIENT_ID: z.string().optional().default(''),
   SPOTIFY_CLIENT_SECRET: z.string().optional().default(''),
+
+  ZINGMP3_ENABLED: z.coerce.boolean().default(true),
 
   LRCLIB_ENABLED: z.coerce.boolean().default(true),
   LASTFM_API_KEY: z.string().optional().default(''),

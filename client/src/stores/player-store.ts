@@ -65,28 +65,50 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   errorMessage: null,
 
   playTrack: async (track, newQueue) => {
+    let activeTrack = track;
+
+    // If track doesn't have an exact full-length YouTube embedId, resolve via backend stream-info
+    if (
+      (!activeTrack.embedId || activeTrack.embedId.length !== 11) &&
+      (activeTrack.source === 'spotify' || activeTrack.source === 'zingmp3' || activeTrack.source === 'local')
+    ) {
+      try {
+        const streamInfoRes = await api.get(`/songs/${activeTrack.source}/${activeTrack.sourceId}/stream-info`);
+        if (streamInfoRes.data?.embedId) {
+          activeTrack = {
+            ...activeTrack,
+            playbackType: streamInfoRes.data.playbackType || 'youtube',
+            embedId: streamInfoRes.data.embedId,
+            isFullLength: true,
+          };
+        }
+      } catch {
+        // Fall back to original track if stream-info request fails
+      }
+    }
+
     const { currentTrack, history, volume, isMuted } = get();
 
     const updatedHistory = currentTrack ? [currentTrack, ...history.slice(0, 30)] : history;
     const updatedQueue = newQueue || get().queue;
 
     set({
-      currentTrack: track,
+      currentTrack: activeTrack,
       isPlaying: true,
       isBuffering: true,
       currentTime: 0,
-      duration: track.durationMs ? track.durationMs / 1000 : 0,
+      duration: activeTrack.durationMs ? activeTrack.durationMs / 1000 : 0,
       history: updatedHistory,
-      queue: updatedQueue.length > 0 ? updatedQueue : [track],
+      queue: updatedQueue.length > 0 ? updatedQueue : [activeTrack],
       errorMessage: null,
     });
 
     try {
-      await playerEngine.loadTrack(track, true);
+      await playerEngine.loadTrack(activeTrack, true);
       playerEngine.setVolume(volume, isMuted);
 
       // Record play to backend (fire & forget)
-      api.post('/songs/record-play', { track }).catch(() => {});
+      api.post('/songs/record-play', { track: activeTrack }).catch(() => {});
     } catch (err: any) {
       get().handleError(err.message || 'Lỗi phát bài hát');
     }

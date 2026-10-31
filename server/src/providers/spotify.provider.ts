@@ -9,6 +9,7 @@ import {
 } from './music-provider.interface.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
+import { resolveExactFullTrack } from '../utils/track-resolver.js';
 
 export class SpotifyProvider implements MusicProvider {
   readonly name: MusicSource = 'spotify';
@@ -57,6 +58,8 @@ export class SpotifyProvider implements MusicProvider {
       item.album?.images?.[0]?.url ||
       'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80';
 
+    const streamUrl = item.preview_url || `/api/songs/spotify:${item.id}/stream`;
+
     return {
       id: `spotify:${item.id}`,
       source: 'spotify',
@@ -66,10 +69,10 @@ export class SpotifyProvider implements MusicProvider {
       album: item.album?.name || '',
       coverUrl,
       durationMs: item.duration_ms || 0,
-      playbackType: item.preview_url ? 'preview' : 'spotify',
-      previewUrl: item.preview_url,
-      streamUrl: item.preview_url,
-      embedId: item.uri, // spotify:track:...
+      playbackType: 'audio',
+      previewUrl: streamUrl,
+      streamUrl,
+      embedId: item.id,
       isFullLength: false,
     };
   }
@@ -86,7 +89,7 @@ export class SpotifyProvider implements MusicProvider {
     if (!token) return result;
 
     try {
-      const limit = 15;
+      const limit = 10;
       const offset = (page - 1) * limit;
       const spotifyType = type === 'all' ? 'track,artist,album' : type;
 
@@ -97,7 +100,18 @@ export class SpotifyProvider implements MusicProvider {
       });
 
       if (res.data?.tracks?.items) {
-        result.tracks = res.data.tracks.items.map((item: any) => this.mapTrack(item));
+        const rawTracks = res.data.tracks.items.map((item: any) => this.mapTrack(item));
+        await Promise.allSettled(
+          rawTracks.slice(0, 6).map(async (t: UnifiedTrack) => {
+            const vid = await resolveExactFullTrack(t.title, t.artists[0]);
+            if (vid) {
+              t.embedId = vid;
+              t.playbackType = 'youtube';
+              t.isFullLength = true;
+            }
+          })
+        );
+        result.tracks = rawTracks;
       }
 
       if (res.data?.artists?.items) {
@@ -110,7 +124,7 @@ export class SpotifyProvider implements MusicProvider {
         }));
       }
     } catch (err: any) {
-      logger.warn({ err: err.message }, 'Spotify search failed');
+      logger.warn({ err: err.message, response: err.response?.data }, 'Spotify search failed');
     }
 
     return result;
@@ -139,6 +153,15 @@ export class SpotifyProvider implements MusicProvider {
   async getStreamInfo(sourceId: string): Promise<StreamInfo | null> {
     const track = await this.getTrack(sourceId);
     if (!track) return null;
+
+    const exactId = await resolveExactFullTrack(track.title, track.artists[0] || '');
+    if (exactId) {
+      return {
+        playbackType: 'youtube',
+        embedId: exactId,
+      };
+    }
+
     return {
       playbackType: track.playbackType,
       previewUrl: track.previewUrl,

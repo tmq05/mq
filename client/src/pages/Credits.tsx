@@ -25,6 +25,20 @@ export const CreditsPage: React.FC = () => {
       license: 'YouTube Terms of Service',
     },
     {
+      name: 'Zing MP3',
+      badge: 'IFrame Embed Widget',
+      desc: 'Kho âm nhạc Việt Nam phong phú, hỗ trợ tìm kiếm gợi ý tác phẩm và phát thông qua Zing MP3 Official IFrame Embed Player Widget, đảm bảo giữ nguyên bản quyền tác giả và số lượt nghe của nghệ sĩ.',
+      link: 'https://zingmp3.vn',
+      license: 'Zing MP3 Official Widget',
+    },
+    {
+      name: 'Spotify',
+      badge: 'Official Web API & Embed',
+      desc: 'Tìm kiếm siêu dữ liệu nghệ sĩ, album và phát đoạn nghe thử hoặc hiển thị widget nhúng chính thức từ Spotify Web API.',
+      link: 'https://developer.spotify.com',
+      license: 'Spotify Developer Terms',
+    },
+    {
       name: 'Deezer',
       badge: 'Metadata & 30s Preview',
       desc: 'Cung cấp siêu dữ liệu bài hát, ảnh bìa album độ phân giải cao và đoạn nghe thử 30 giây phục vụ khám phá âm nhạc qua Deezer Public API.',

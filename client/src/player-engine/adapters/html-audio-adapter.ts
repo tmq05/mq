@@ -26,7 +26,6 @@ export class HtmlAudioAdapter implements PlayerAdapter {
 
     this.audio = new Audio();
     this.audio.preload = 'metadata';
-    this.audio.crossOrigin = 'anonymous';
     this.audio.src = streamSrc;
 
     // Attach listeners

@@ -74,8 +74,10 @@ export const SearchPage: React.FC = () => {
   const sourcesList = [
     { id: 'all', label: 'Tất cả nguồn' },
     { id: 'local', label: 'mq Local' },
+    { id: 'zingmp3', label: 'Zing MP3' },
     { id: 'audius', label: 'Audius' },
     { id: 'jamendo', label: 'Jamendo' },
+    { id: 'spotify', label: 'Spotify' },
     { id: 'deezer', label: 'Deezer' },
     { id: 'itunes', label: 'Apple Music' },
     { id: 'youtube', label: 'YouTube' },
@@ -111,8 +113,8 @@ export const SearchPage: React.FC = () => {
               }}
               className={`px-3 py-1 rounded-pill text-xs font-mono transition-colors ${
                 activeSource === s.id
-                  ? 'bg-ink dark:bg-white text-white dark:text-black font-semibold'
-                  : 'bg-surface-soft dark:bg-surface-dark-soft text-body dark:text-mute hover:text-ink dark:hover:text-white border border-hairline dark:border-hairline-dark'
+                  ? 'bg-ink dark:bg-white text-white dark:text-black font-semibold shadow-sm'
+                  : 'bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 font-medium'
               }`}
             >
               {s.label}

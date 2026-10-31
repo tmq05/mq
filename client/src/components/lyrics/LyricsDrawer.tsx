@@ -3,6 +3,7 @@ import { X, Mic2, AlertCircle } from 'lucide-react';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { api } from '../../api/client.js';
 import { LyricsLine } from '../../types/index.js';
+import { formatArtists } from '../../utils/format.js';
 
 export const LyricsDrawer: React.FC = () => {
   const { currentTrack, currentTime, isLyricsOpen, toggleLyrics, seekTo } = usePlayerStore();
@@ -23,7 +24,9 @@ export const LyricsDrawer: React.FC = () => {
     setHasError(false);
 
     const title = currentTrack.title;
-    const artist = currentTrack.artists[0] || '';
+    const artist = Array.isArray(currentTrack.artists) && currentTrack.artists.length > 0
+      ? currentTrack.artists[0]
+      : '';
 
     api
       .get('/lyrics', {
@@ -120,7 +123,7 @@ export const LyricsDrawer: React.FC = () => {
               {currentTrack?.title}
             </h3>
             <p className="text-xs text-body dark:text-mute">
-              {currentTrack?.artists.join(', ')}
+              {formatArtists(currentTrack?.artists)}
             </p>
           </div>
         </div>

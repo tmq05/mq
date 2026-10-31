@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Trash2 } from 'lucide-react';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { SourceBadge } from '../common/Badge.js';
+import { formatArtists } from '../../utils/format.js';
 
 export const QueueDrawer: React.FC = () => {
   const {
@@ -79,7 +80,7 @@ export const QueueDrawer: React.FC = () => {
                       {track.title}
                     </span>
                     <span className="text-[10px] text-body dark:text-mute truncate">
-                      {track.artists.join(', ')}
+                      {formatArtists(track.artists)}
                     </span>
                   </div>
                 </div>
