@@ -9,6 +9,7 @@ import {
 } from './music-provider.interface.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
+import { resolveExactFullTrack } from '../utils/track-resolver.js';
 
 export class ITunesProvider implements MusicProvider {
   readonly name: MusicSource = 'itunes';
@@ -32,10 +33,10 @@ export class ITunesProvider implements MusicProvider {
       album: item.collectionName || '',
       coverUrl,
       durationMs: item.trackTimeMillis || 0,
-      playbackType: 'preview',
+      playbackType: 'youtube',
       previewUrl: item.previewUrl,
       streamUrl: item.previewUrl,
-      isFullLength: false,
+      isFullLength: true,
     };
   }
 
@@ -79,7 +80,18 @@ export class ITunesProvider implements MusicProvider {
       const [trackRes, artistRes] = await Promise.all([trackPromise, artistPromise]);
 
       if (trackRes.data?.results) {
-        result.tracks = trackRes.data.results.map((item: any) => this.mapTrack(item));
+        const rawTracks = trackRes.data.results.map((item: any) => this.mapTrack(item));
+        await Promise.allSettled(
+          rawTracks.slice(0, 5).map(async (t: UnifiedTrack) => {
+            const vid = await resolveExactFullTrack(t.title, t.artists[0]);
+            if (vid) {
+              t.embedId = vid;
+              t.playbackType = 'youtube';
+              t.isFullLength = true;
+            }
+          })
+        );
+        result.tracks = rawTracks;
       }
 
       if (artistRes.data?.results) {
@@ -115,11 +127,20 @@ export class ITunesProvider implements MusicProvider {
 
   async getStreamInfo(sourceId: string): Promise<StreamInfo | null> {
     const track = await this.getTrack(sourceId);
-    if (!track?.previewUrl) return null;
+    if (!track) return null;
+
+    const vid = await resolveExactFullTrack(track.title, track.artists[0] || '');
+    if (vid) {
+      return {
+        playbackType: 'youtube',
+        embedId: vid,
+      };
+    }
+
     return {
       streamUrl: track.previewUrl,
       previewUrl: track.previewUrl,
-      playbackType: 'preview',
+      playbackType: 'audio',
     };
   }
 }

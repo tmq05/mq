@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Play, Sparkles, Flame, Radio, Disc3 } from 'lucide-react';
+import { Play, Sparkles, Flame, Radio, Disc3, Users, ArrowRight } from 'lucide-react';
 import { api } from '../api/client.js';
 import { SongCard } from '../components/song/SongCard.js';
 import { SongRow } from '../components/song/SongRow.js';
@@ -46,6 +46,21 @@ export const Home: React.FC = () => {
     queryFn: async () => {
       const res = await api.get('/albums');
       return res.data.albums as Album[];
+    },
+  });
+
+  // 5. Featured Artists
+  const { data: artistsData } = useQuery({
+    queryKey: ['featured-artists'],
+    queryFn: async () => {
+      const res = await api.get('/artists');
+      return res.data.artists as Array<{
+        id: string;
+        name: string;
+        bio?: string;
+        imageUrl?: string;
+        _count?: { songs: number; followers: number };
+      }>;
     },
   });
 
@@ -148,6 +163,55 @@ export const Home: React.FC = () => {
           ))}
         </div>
       </section>
+
+      {/* Nghệ sĩ nổi bật */}
+      {artistsData && artistsData.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between border-b border-hairline dark:border-hairline-dark pb-3">
+            <div className="flex items-center gap-2.5">
+              <Users className="w-5 h-5 text-traffic-green" />
+              <h2 className="font-display font-bold text-xl text-neutral-900 dark:text-white">
+                Nghệ sĩ nổi bật
+              </h2>
+            </div>
+            <Link
+              to="/artists"
+              className="text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white flex items-center gap-1 group"
+            >
+              <span>Xem tất cả ({artistsData.length})</span>
+              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+            {artistsData.slice(0, 6).map((artist) => (
+              <Link
+                key={artist.id}
+                to={`/artists/${artist.id}`}
+                className="group flex flex-col items-center p-3 rounded-card border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card hover:bg-surface-soft dark:hover:bg-surface-dark-soft transition-all duration-200 text-center"
+              >
+                <div className="w-20 h-20 rounded-full overflow-hidden bg-surface-soft dark:bg-surface-dark-soft mb-2.5 border border-hairline dark:border-hairline-dark group-hover:scale-105 transition-transform duration-300">
+                  <img
+                    src={
+                      artist.imageUrl ||
+                      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150&auto=format&fit=crop&q=80'
+                    }
+                    alt={artist.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <h4 className="font-semibold text-xs sm:text-sm truncate w-full text-neutral-900 dark:text-white group-hover:underline">
+                  {artist.name}
+                </h4>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                  {artist._count?.followers ?? 0} người theo dõi
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Genres Grid */}
       {genresData && genresData.length > 0 && (

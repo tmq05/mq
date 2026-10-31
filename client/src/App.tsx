@@ -15,6 +15,8 @@ import { SearchPage } from './pages/Search.js';
 import { LibraryPage } from './pages/Library.js';
 import { PlaylistDetailPage } from './pages/PlaylistDetail.js';
 import { AlbumDetailPage } from './pages/AlbumDetail.js';
+import { ArtistsPage } from './pages/Artists.js';
+import { ArtistDetailPage } from './pages/ArtistDetail.js';
 import { CreditsPage } from './pages/Credits.js';
 import { AuthPage } from './pages/Auth.js';
 import { ProfilePage } from './pages/Profile.js';
@@ -75,6 +77,8 @@ export const AppContent: React.FC = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/artists" element={<ArtistsPage />} />
+            <Route path="/artists/:id" element={<ArtistDetailPage />} />
             <Route path="/library" element={<LibraryPage />} />
             <Route path="/playlists/:id" element={<PlaylistDetailPage />} />
             <Route path="/albums/:id" element={<AlbumDetailPage />} />

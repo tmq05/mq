@@ -169,6 +169,73 @@ export class SpotifyProvider implements MusicProvider {
       embedId: track.embedId,
     };
   }
+
+  async getArtist(sourceId: string): Promise<any | null> {
+    if (!this.isEnabled) return null;
+    const token = await this.getAppToken();
+    if (!token) return null;
+
+    try {
+      const [artistRes, topRes, albumsRes] = await Promise.allSettled([
+        axios.get(`https://api.spotify.com/v1/artists/${sourceId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000,
+        }),
+        axios.get(`https://api.spotify.com/v1/artists/${sourceId}/top-tracks?market=VN`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000,
+        }),
+        axios.get(`https://api.spotify.com/v1/artists/${sourceId}/albums?market=VN&limit=10`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000,
+        }),
+      ]);
+
+      if (artistRes.status !== 'fulfilled') return null;
+      const a = artistRes.value.data;
+
+      let topTracks: UnifiedTrack[] = [];
+      if (topRes.status === 'fulfilled' && topRes.value.data?.tracks) {
+        topTracks = topRes.value.data.tracks.map((item: any) => this.mapTrack(item));
+        await Promise.allSettled(
+          topTracks.slice(0, 10).map(async (t) => {
+            const vid = await resolveExactFullTrack(t.title, t.artists[0]);
+            if (vid) {
+              t.embedId = vid;
+              t.playbackType = 'youtube';
+              t.isFullLength = true;
+            }
+          })
+        );
+      }
+
+      let albums: any[] = [];
+      if (albumsRes.status === 'fulfilled' && albumsRes.value.data?.items) {
+        albums = albumsRes.value.data.items.map((al: any) => ({
+          id: `spotify:${al.id}`,
+          title: al.name,
+          coverUrl: al.images?.[0]?.url,
+          releaseDate: al.release_date,
+        }));
+      }
+
+      return {
+        id: `spotify:${a.id}`,
+        source: 'spotify',
+        sourceId: a.id,
+        name: a.name,
+        imageUrl: a.images?.[0]?.url,
+        bio: `Nghệ sĩ trên Spotify (${a.genres?.slice(0, 3).join(', ') || 'Âm nhạc'})`,
+        followersCount: a.followers?.total || 0,
+        isFollowing: false,
+        topTracks,
+        albums,
+      };
+    } catch (err: any) {
+      logger.warn({ err: err.message, sourceId }, 'Spotify getArtist failed');
+      return null;
+    }
+  }
 }
 
 export const spotifyProvider = new SpotifyProvider();

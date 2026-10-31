@@ -7,7 +7,7 @@ interface BadgeProps {
   className?: string;
 }
 
-export const SourceBadge: React.FC<BadgeProps> = ({ isFullLength = true, source, className = '' }) => {
+export const SourceBadge: React.FC<BadgeProps> = ({ isFullLength: _isFullLength = true, source, className = '' }) => {
   const sourceLabels: Record<MusicSource, string> = {
     local: 'mq Local',
     audius: 'Audius',
@@ -26,19 +26,9 @@ export const SourceBadge: React.FC<BadgeProps> = ({ isFullLength = true, source,
           {sourceLabels[source] || source}
         </span>
       )}
-      <span
-        className={`px-2 py-0.5 rounded-pill font-sans font-medium flex items-center gap-1 ${
-          isFullLength
-            ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200'
-            : 'bg-amber-100/70 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300'
-        }`}
-      >
-        <span
-          className={`w-1.5 h-1.5 rounded-full ${
-            isFullLength ? 'bg-traffic-green' : 'bg-traffic-yellow'
-          }`}
-        />
-        {isFullLength ? 'Full' : '30s'}
+      <span className="px-2 py-0.5 rounded-pill font-sans font-medium flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-traffic-green" />
+        Full
       </span>
     </div>
   );

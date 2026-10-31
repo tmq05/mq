@@ -10,6 +10,7 @@ import {
 } from './music-provider.interface.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
+import { resolveExactFullTrack } from '../utils/track-resolver.js';
 
 export class DeezerProvider implements MusicProvider {
   readonly name: MusicSource = 'deezer';
@@ -29,10 +30,10 @@ export class DeezerProvider implements MusicProvider {
       album: item.album?.title || '',
       coverUrl: item.album?.cover_big || item.album?.cover_medium || item.album?.cover,
       durationMs: (item.duration || 0) * 1000,
-      playbackType: 'preview',
+      playbackType: 'youtube',
       previewUrl: item.preview,
       streamUrl: item.preview,
-      isFullLength: false,
+      isFullLength: true,
     };
   }
 
@@ -76,7 +77,18 @@ export class DeezerProvider implements MusicProvider {
       ]);
 
       if (trackRes.data?.data) {
-        result.tracks = trackRes.data.data.map((item: any) => this.mapTrack(item));
+        const rawTracks = trackRes.data.data.map((item: any) => this.mapTrack(item));
+        await Promise.allSettled(
+          rawTracks.slice(0, 5).map(async (t: UnifiedTrack) => {
+            const vid = await resolveExactFullTrack(t.title, t.artists[0]);
+            if (vid) {
+              t.embedId = vid;
+              t.playbackType = 'youtube';
+              t.isFullLength = true;
+            }
+          })
+        );
+        result.tracks = rawTracks;
       }
 
       if (artistRes.data?.data) {
@@ -160,11 +172,20 @@ export class DeezerProvider implements MusicProvider {
 
   async getStreamInfo(sourceId: string): Promise<StreamInfo | null> {
     const track = await this.getTrack(sourceId);
-    if (!track?.previewUrl) return null;
+    if (!track) return null;
+
+    const vid = await resolveExactFullTrack(track.title, track.artists[0] || '');
+    if (vid) {
+      return {
+        playbackType: 'youtube',
+        embedId: vid,
+      };
+    }
+
     return {
       streamUrl: track.previewUrl,
       previewUrl: track.previewUrl,
-      playbackType: 'preview',
+      playbackType: 'audio',
     };
   }
 }

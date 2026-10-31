@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { Search as SearchIcon, Youtube, Music, User, AlertCircle } from 'lucide-react';
 import { api } from '../api/client.js';
 import { SongRow } from '../components/song/SongRow.js';
@@ -186,22 +186,24 @@ export const SearchPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
             {artists.map((artist) => (
-              <div
+              <Link
                 key={artist.id}
-                className="flex flex-col items-center text-center p-3 rounded-card border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card"
+                to={`/artists/${artist.id}`}
+                className="group flex flex-col items-center text-center p-3 rounded-card border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card hover:bg-surface-soft dark:hover:bg-surface-dark-soft transition-all duration-200 cursor-pointer"
               >
-                <div className="w-20 h-20 rounded-full overflow-hidden bg-surface-soft mb-2.5">
+                <div className="w-20 h-20 rounded-full overflow-hidden bg-surface-soft mb-2.5 border border-hairline dark:border-hairline-dark group-hover:scale-105 transition-transform duration-300">
                   <img
                     src={artist.imageUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150&auto=format&fit=crop&q=80'}
                     alt={artist.name}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 </div>
-                <span className="font-semibold text-sm truncate text-ink dark:text-white w-full">
+                <span className="font-semibold text-sm truncate text-ink dark:text-white w-full group-hover:underline">
                   {artist.name}
                 </span>
                 <span className="text-[11px] text-mute">Nghệ sĩ</span>
-              </div>
+              </Link>
             ))}
           </div>
         </section>

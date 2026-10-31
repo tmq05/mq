@@ -24,6 +24,7 @@ export const Navbar: React.FC = () => {
   const navLinks = [
     { label: 'Khám phá', to: '/' },
     { label: 'Tìm kiếm', to: '/search' },
+    { label: 'Nghệ sĩ', to: '/artists' },
     { label: 'Thư viện', to: '/library' },
     { label: 'Bản quyền', to: '/credits' },
   ];
