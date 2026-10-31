@@ -10,8 +10,7 @@ export const CURATED_SYNCED_LYRICS: CuratedLyrics[] = [
   {
     title: '2 4',
     artist: 'W/N',
-    syncedLyrics: `[00:00.00]2 4 - W/N (ft. 267 & Nâu)
-[00:10.00]Chỉ là vì nơi này
+    syncedLyrics: `[00:10.00]Chỉ là vì nơi này
 [00:14.50]Chỉ còn bóng tối, cô đơn mình anh
 [00:19.00]Muốn rời đi khỏi đây
 [00:23.50]Chỉ vì anh quá yếu đuối
@@ -56,8 +55,7 @@ export const CURATED_SYNCED_LYRICS: CuratedLyrics[] = [
   {
     title: 'Nơi Này Có Anh',
     artist: 'Sơn Tùng M-TP',
-    syncedLyrics: `[00:00.00]Nơi Này Có Anh - Sơn Tùng M-TP
-[00:15.50]Em là ai từ đâu bước đến nơi đây dịu dàng chân phương
+    syncedLyrics: `[00:15.50]Em là ai từ đâu bước đến nơi đây dịu dàng chân phương
 [00:20.00]Em là ai tựa như ánh nắng ban mai ngọt ngào trong sương
 [00:24.50]Ngắm em thật lâu, con tim anh yếu mềm
 [00:29.00]Đắm say từ phút đó từng giây trôi yêu thêm
@@ -287,18 +285,30 @@ export const CURATED_SYNCED_LYRICS: CuratedLyrics[] = [
 export function findCuratedLyrics(title: string, artist?: string): string | null {
   const normTitle = removeAccents(title).toLowerCase().trim();
   const normArtist = artist ? removeAccents(artist).toLowerCase().trim() : '';
+  const stripAlnum = (s: string) => removeAccents(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanTitleAlnum = stripAlnum(title);
 
-  // 1. Exact or substring match
+  // 1. Exact, stripped, or substring match
   for (const item of CURATED_SYNCED_LYRICS) {
     const itemTitle = removeAccents(item.title).toLowerCase().trim();
     const itemArtist = removeAccents(item.artist).toLowerCase().trim();
+    const itemTitleAlnum = stripAlnum(item.title);
 
-    // Check title match
-    const titleMatch = normTitle === itemTitle || normTitle.includes(itemTitle) || itemTitle.includes(normTitle);
+    // Check title match (including stripped whitespace e.g. "24" matches "2 4")
+    const titleMatch =
+      normTitle === itemTitle ||
+      cleanTitleAlnum === itemTitleAlnum ||
+      (cleanTitleAlnum.length >= 5 && itemTitleAlnum.includes(cleanTitleAlnum)) ||
+      (itemTitleAlnum.length >= 5 && cleanTitleAlnum.includes(itemTitleAlnum));
+
     if (titleMatch) {
       if (!normArtist) return item.syncedLyrics;
       // Check artist match or title is very strong match
-      if (normArtist.includes(itemArtist) || itemArtist.includes(normArtist) || normTitle === itemTitle) {
+      if (
+        normArtist.includes(itemArtist) ||
+        itemArtist.includes(normArtist) ||
+        cleanTitleAlnum === itemTitleAlnum
+      ) {
         return item.syncedLyrics;
       }
     }

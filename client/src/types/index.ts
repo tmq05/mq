@@ -84,6 +84,11 @@ export interface Genre {
   id: string;
   name: string;
   slug: string;
+  category?: 'vietnam' | 'international' | 'mood';
+  categoryLabel?: string;
+  gradient?: string;
+  color?: string;
+  description?: string;
   imageUrl?: string;
   _count?: { songs: number };
 }

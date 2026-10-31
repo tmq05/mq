@@ -32,7 +32,10 @@ const KNOWN_EXACT_TRACKS: Record<string, string> = {
 
   // W/N
   '2 4 w n': 'DuzuhELUZw8',
+  '24 w n': 'DuzuhELUZw8',
+  '2 4': 'DuzuhELUZw8',
   '3107 w n': '9BFrP8kR9a4',
+  '3107': '9BFrP8kR9a4',
 
   // HIEUTHUHAI
   'ngu mot minh hieuthuhai': '1OJQdxT6WHE',
@@ -96,14 +99,20 @@ export async function resolveExactFullTrack(
   const key = normalizeKey(`${title} ${artist}`);
   const titleKey = normalizeKey(title);
 
-  // 1. Direct cache lookup
+  // 1. Direct cache lookup (key with artist or title only)
   if (cache.has(key)) {
     return cache.get(key)!;
   }
+  if (cache.has(titleKey)) {
+    return cache.get(titleKey)!;
+  }
 
-  for (const [k, v] of cache.entries()) {
-    if (k.includes(titleKey) || titleKey.includes(k)) {
-      return v;
+  // Safe fuzzy lookup only for reasonably long titles (>= 6 chars) to avoid false positives on short words
+  if (titleKey.length >= 6) {
+    for (const [k, v] of cache.entries()) {
+      if (k.startsWith(titleKey) || titleKey.startsWith(k)) {
+        return v;
+      }
     }
   }
 

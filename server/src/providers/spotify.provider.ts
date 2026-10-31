@@ -102,7 +102,7 @@ export class SpotifyProvider implements MusicProvider {
       if (res.data?.tracks?.items) {
         const rawTracks = res.data.tracks.items.map((item: any) => this.mapTrack(item));
         await Promise.allSettled(
-          rawTracks.slice(0, 6).map(async (t: UnifiedTrack) => {
+          rawTracks.map(async (t: UnifiedTrack) => {
             const vid = await resolveExactFullTrack(t.title, t.artists[0]);
             if (vid) {
               t.embedId = vid;

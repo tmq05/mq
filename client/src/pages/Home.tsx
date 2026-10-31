@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Play, Music, Flame, Radio, Disc3, Users, ArrowRight } from 'lucide-react';
+import { Play, Music, Flame, Radio, Disc3, Users, ArrowRight, Compass, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../api/client.js';
 import { SongCard } from '../components/song/SongCard.js';
 import { SongRow } from '../components/song/SongRow.js';
@@ -13,6 +13,10 @@ import { formatAlbumArtist, formatFollowers } from '../utils/format.js';
 
 export const Home: React.FC = () => {
   const { playTrack, currentTrack } = usePlayerStore();
+
+  const [genreCategory, setGenreCategory] = useState<'all' | 'vietnam' | 'international' | 'mood'>('all');
+  const [genreSearch, setGenreSearch] = useState('');
+  const [showAllGenres, setShowAllGenres] = useState(false);
 
   // 1. Trending Songs
   const { data: trendingData, isLoading: trendingLoading } = useQuery({
@@ -218,38 +222,126 @@ export const Home: React.FC = () => {
         </section>
       )}
 
-      {/* Genres Grid */}
-      {genresData && genresData.length > 0 && (
-        <section className="space-y-4">
-          <div className="border-b border-hairline dark:border-hairline-dark pb-3">
-            <h2 className="font-display font-bold text-xl text-ink dark:text-white">
-              Duyệt theo thể loại
-            </h2>
-          </div>
+      {/* Genres Grid - Duyệt theo thể loại */}
+      {genresData && genresData.length > 0 && (() => {
+        const filteredGenres = genresData.filter((g) => {
+          const matchCat = genreCategory === 'all' || g.category === genreCategory;
+          const matchSearch =
+            !genreSearch.trim() ||
+            g.name.toLowerCase().includes(genreSearch.trim().toLowerCase()) ||
+            (g.description && g.description.toLowerCase().includes(genreSearch.trim().toLowerCase()));
+          return matchCat && matchSearch;
+        });
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-            {genresData.map((genre) => (
-              <Link
-                key={genre.id}
-                to={`/search?q=${encodeURIComponent(genre.name)}`}
-                className="group relative h-28 rounded-card overflow-hidden border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-surface-dark-soft p-4 flex flex-col justify-end transition-transform hover:-translate-y-1"
-              >
-                {genre.imageUrl && (
-                  <img
-                    src={genre.imageUrl}
-                    alt={genre.name}
-                    className="absolute inset-0 w-full h-full object-cover opacity-60 dark:opacity-40 group-hover:scale-105 transition-transform duration-300"
+        const displayedGenres = showAllGenres ? filteredGenres : filteredGenres.slice(0, 12);
+
+        return (
+          <section className="space-y-5 pt-2">
+            {/* Header & Controls */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-hairline dark:border-hairline-dark pb-3">
+              <div className="flex items-center gap-2.5">
+                <Compass className="w-5 h-5 text-indigo-500" />
+                <h2 className="font-display font-bold text-xl text-neutral-900 dark:text-white">
+                  Duyệt theo thể loại
+                </h2>
+              </div>
+
+              {/* Category Filter Chips & Search Bar */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+                  {[
+                    { id: 'all', label: 'Tất cả' },
+                    { id: 'vietnam', label: 'Việt Nam' },
+                    { id: 'international', label: 'Quốc tế' },
+                    { id: 'mood', label: 'Tâm trạng & Hoạt động' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setGenreCategory(tab.id as any)}
+                      className={`px-3 py-1 rounded-pill text-xs font-mono transition-colors whitespace-nowrap ${
+                        genreCategory === tab.id
+                          ? 'bg-ink dark:bg-white text-white dark:text-black font-semibold shadow-sm'
+                          : 'bg-surface-soft dark:bg-surface-dark-soft text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-neutral-800 border border-hairline dark:border-hairline-dark font-medium'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Quick Genre Search */}
+                <div className="relative w-full sm:w-48">
+                  <Search className="w-3.5 h-3.5 text-mute absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Lọc thể loại..."
+                    value={genreSearch}
+                    onChange={(e) => setGenreSearch(e.target.value)}
+                    className="w-full h-8 pl-8 pr-3 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-xs text-ink dark:text-white placeholder-mute focus:outline-none focus:ring-1 focus:ring-ink dark:focus:ring-white transition-all shadow-subtle"
                   />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                <span className="relative z-10 font-display font-bold text-white text-base">
-                  {genre.name}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+                </div>
+              </div>
+            </div>
+
+            {/* 3D Tilted Cards Grid */}
+            {displayedGenres.length === 0 ? (
+              <div className="py-12 text-center text-xs text-mute">
+                Không tìm thấy thể loại nào phù hợp với từ khóa "{genreSearch}".
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {displayedGenres.map((genre) => {
+                  const gradientClass = genre.gradient || 'from-emerald-500 to-teal-700';
+                  return (
+                    <Link
+                      key={genre.id}
+                      to={`/genres/${genre.slug}`}
+                      className={`group relative overflow-hidden rounded-2xl p-4 h-36 sm:h-40 flex flex-col justify-between shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer bg-gradient-to-br ${gradientClass}`}
+                    >
+                      {/* Top-Left: Category Label & Bold Genre Name */}
+                      <div className="relative z-10 pr-10">
+                        {genre.categoryLabel && (
+                          <span className="block text-[10px] font-mono text-white/80 uppercase tracking-wider mb-1">
+                            {genre.categoryLabel}
+                          </span>
+                        )}
+                        <h3 className="font-display font-black text-lg sm:text-xl text-white tracking-tight leading-tight drop-shadow-sm group-hover:drop-shadow-md">
+                          {genre.name}
+                        </h3>
+                      </div>
+
+                      {/* 3D Tilted Album Cover in Bottom-Right Corner */}
+                      {genre.imageUrl && (
+                        <div className="absolute -bottom-2 -right-3 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden shadow-2xl rotate-[25deg] group-hover:rotate-[28deg] group-hover:scale-110 group-hover:translate-x-1 group-hover:translate-y-1 transition-all duration-300 border border-white/20 pointer-events-none">
+                          <img
+                            src={genre.imageUrl}
+                            alt={genre.name}
+                            loading="lazy"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Toggle More / Less Button */}
+            {filteredGenres.length > 12 && (
+              <div className="pt-2 text-center">
+                <button
+                  onClick={() => setShowAllGenres(!showAllGenres)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-pill bg-surface-soft dark:bg-surface-dark-soft hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-semibold text-neutral-800 dark:text-neutral-200 border border-hairline dark:border-hairline-dark shadow-sm transition-all"
+                >
+                  <span>{showAllGenres ? 'Thu gọn' : `Xem thêm (${filteredGenres.length - 12} thể loại)`}</span>
+                  {showAllGenres ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            )}
+          </section>
+        );
+      })()}
 
       {/* Albums Grid */}
       {albumsData && albumsData.length > 0 && (

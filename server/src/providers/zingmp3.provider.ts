@@ -86,7 +86,7 @@ export class ZingMp3Provider implements MusicProvider {
 
       if (result.tracks.length > 0) {
         await Promise.allSettled(
-          result.tracks.slice(0, 5).map(async (t) => {
+          result.tracks.map(async (t) => {
             const vid = await resolveExactFullTrack(t.title, t.artists[0]);
             if (vid) {
               t.embedId = vid;
