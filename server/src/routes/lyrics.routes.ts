@@ -6,3 +6,4 @@ const router = Router();
 router.get('/', lyricsController.getLyrics);
 
 export default router;
+

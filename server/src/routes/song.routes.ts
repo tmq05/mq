@@ -13,3 +13,4 @@ router.post('/like', requireAuth, songController.toggleLike);
 router.post('/record-play', optionalAuth, songController.recordPlay);
 
 export default router;
+

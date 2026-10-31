@@ -63,3 +63,4 @@ describe('Player Store & State Transitions', () => {
     expect(usePlayerStore.getState().volume).toBe(0);
   });
 });
+

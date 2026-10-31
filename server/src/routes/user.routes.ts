@@ -9,3 +9,4 @@ router.get('/history', requireAuth, userController.getHistory);
 router.get('/playlists', requireAuth, userController.getPlaylists);
 
 export default router;
+

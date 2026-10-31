@@ -7,3 +7,4 @@ router.get('/', genreController.getAll);
 router.get('/:slug', genreController.getBySlug);
 
 export default router;
+

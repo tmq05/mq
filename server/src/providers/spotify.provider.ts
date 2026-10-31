@@ -149,3 +149,4 @@ export class SpotifyProvider implements MusicProvider {
 }
 
 export const spotifyProvider = new SpotifyProvider();
+

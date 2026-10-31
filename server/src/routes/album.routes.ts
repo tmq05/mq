@@ -7,3 +7,4 @@ router.get('/', albumController.getAll);
 router.get('/:id', albumController.getById);
 
 export default router;
+

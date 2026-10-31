@@ -13,3 +13,4 @@ export const prisma = new PrismaClient({
 prisma.$on('error', (e) => {
   logger.error({ err: e }, 'Prisma database error');
 });
+

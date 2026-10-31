@@ -170,3 +170,4 @@ export class DeezerProvider implements MusicProvider {
 }
 
 export const deezerProvider = new DeezerProvider();
+

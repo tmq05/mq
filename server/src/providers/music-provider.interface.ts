@@ -89,3 +89,4 @@ export interface MusicProvider {
   getTrending?(): Promise<UnifiedTrack[]>;
   getStreamInfo(sourceId: string): Promise<StreamInfo | null>;
 }
+

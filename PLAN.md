@@ -175,3 +175,4 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 - Card: `rounded-xl` (`12px`), border hairline `1px solid #e5e5e5` (`dark:border-neutral-800`).
 - Typography: SF Pro Rounded / Nunito cho display headings (trọng lượng 500-600), Inter cho body, Monospace cho tags & shortcuts.
 - Không dùng bóng đổ lòe loẹt hay gradient màu mè; chú trọng typography, khoảng cách thoáng đãng (`spacing.section = 88px` / `64px`), đường nét tối giản và thanh lịch.
+

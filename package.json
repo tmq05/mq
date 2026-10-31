@@ -8,10 +8,13 @@
     "client"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=server & npm run dev --workspace=client",
+    "dev": "concurrently -n \"server,client\" -c \"cyan,magenta\" \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
     "build": "npm run build --workspace=server && npm run build --workspace=client",
     "lint": "npm run lint --workspace=server && npm run lint --workspace=client",
-    "test": "npm run test --workspace=server && npm run test --workspace=client"
+    "test": "npm run test --workspace=server && npm run test --workspace=client",
+    "db:start": "powershell -Command \"& 'C:\\Program Files\\PostgreSQL\\18\\bin\\pg_ctl.exe' -D 'server\\pgdata' -l 'server\\pgdata\\server.log' -o '-p 5433' start\""
   },
   "keywords": [
     "music",
@@ -25,6 +28,6 @@
   "author": "mq team",
   "license": "MIT",
   "devDependencies": {
-    "@types/jsonwebtoken": "^9.0.10"
+    "concurrently": "^9.1.2"
   }
 }

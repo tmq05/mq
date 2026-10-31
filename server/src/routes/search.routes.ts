@@ -8,3 +8,4 @@ router.get('/', searchLimiter, searchController.search);
 router.get('/suggestions', searchLimiter, searchController.suggestions);
 
 export default router;
+

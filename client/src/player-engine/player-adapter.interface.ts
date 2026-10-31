@@ -16,3 +16,4 @@ export interface PlayerAdapter {
   setVolume(volume: number): void; // 0 to 1
   destroy(): void;
 }
+

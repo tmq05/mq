@@ -25,3 +25,4 @@ export class LyricsController {
 }
 
 export const lyricsController = new LyricsController();
+

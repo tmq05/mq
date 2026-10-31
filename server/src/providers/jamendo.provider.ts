@@ -150,3 +150,4 @@ export class JamendoProvider implements MusicProvider {
 }
 
 export const jamendoProvider = new JamendoProvider();
+

@@ -84,3 +84,4 @@ export const useAuthStore = create<AuthState>((set) => ({
       user: state.user ? { ...state.user, ...updated } : null,
     })),
 }));
+

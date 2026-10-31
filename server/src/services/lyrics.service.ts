@@ -112,3 +112,4 @@ export class LyricsService {
 }
 
 export const lyricsService = new LyricsService();
+

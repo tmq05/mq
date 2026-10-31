@@ -13,3 +13,4 @@ router.post('/:id/songs', requireAuth, playlistController.addSong);
 router.delete('/:id/songs/:songId', requireAuth, playlistController.removeSong);
 
 export default router;
+

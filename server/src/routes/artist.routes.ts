@@ -7,3 +7,4 @@ router.get('/', artistController.getAll);
 router.get('/:id', artistController.getById);
 
 export default router;
+

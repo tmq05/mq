@@ -153,3 +153,4 @@ Truy cập `http://localhost:3000` để bắt đầu nghe nhạc.
   2. Thêm dịch vụ PostgreSQL và Redis từ kho plugin của Railway.
   3. Chọn thư mục `server/`.
   4. Gán các biến môi trường: `DATABASE_URL`, `REDIS_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `CLIENT_URL`.
+

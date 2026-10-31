@@ -28,3 +28,4 @@ router.post('/forgot-password', authLimiter, authController.forgotPassword);
 router.post('/reset-password', authLimiter, authController.resetPassword);
 
 export default router;
+

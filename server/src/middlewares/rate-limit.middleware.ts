@@ -23,3 +23,4 @@ export const searchLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Tần suất tìm kiếm quá nhanh, vui lòng thử lại sau vài giây.' },
 });
+

@@ -39,3 +39,4 @@ COPY --from=builder /app/server/src/swagger ./dist/swagger
 EXPOSE 5000
 
 CMD ["sh", "-c", "npx prisma db push && node dist/server.js"]
+

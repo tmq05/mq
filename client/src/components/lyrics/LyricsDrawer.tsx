@@ -194,3 +194,4 @@ export const LyricsDrawer: React.FC = () => {
     </div>
   );
 };
+

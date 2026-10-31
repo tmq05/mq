@@ -103,3 +103,4 @@ export const AlbumDetailPage: React.FC = () => {
     </div>
   );
 };
+

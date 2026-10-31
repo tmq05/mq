@@ -78,3 +78,4 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
     </div>
   );
 };
+

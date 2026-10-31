@@ -15,3 +15,4 @@ describe('Client Format Utilities', () => {
     expect(formatMs(198000)).toBe('3:18');
   });
 });
+

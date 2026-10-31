@@ -24,3 +24,4 @@ router.use('/albums', albumRoutes);
 router.use('/admin', adminRoutes);
 
 export default router;
+

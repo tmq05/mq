@@ -41,3 +41,4 @@ export class LocalStorageProvider implements StorageProvider {
 }
 
 export const localStorageProvider = new LocalStorageProvider();
+

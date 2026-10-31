@@ -81,3 +81,4 @@ export class ArtistController {
 }
 
 export const artistController = new ArtistController();
+

@@ -194,3 +194,4 @@ model PlayHistory {
   @@index([userId, playedAt])
   @@map("play_histories")
 }
+

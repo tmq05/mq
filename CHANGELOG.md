@@ -50,15 +50,20 @@ Tất cả các thay đổi và tính năng trong quá trình xây dựng hệ t
   - Bộ file Dockerfile cho Client, Server và `docker-compose.yml` khởi chạy toàn bộ 4 container (Postgres, Redis, Server, Client).
 
 ### 🐛 Lỗi và Tình huống biên đã được xử lý (Fixes & Edge Cases Resolved)
-1. **Lỗi xác thực cơ sở dữ liệu PostgreSQL cục bộ**:
+1. **Khắc phục lỗi chạy đồng thời `npm run dev` trên Windows**:
+   - Sử dụng gói `concurrently` để khởi động song song cả Backend (port 5000) và Frontend (port 3000). Trước đó, lệnh `&` trên Windows CMD/PowerShell chạy tuần tự khiến server chiếm quyền terminal và client không bao giờ được khởi động.
+2. **Khắc phục lỗi `EADDRINUSE: address already in use :::5000`**:
+   - Bổ sung cơ chế bắt lỗi `EADDRINUSE` rõ ràng trong `server.ts` và dọn dẹp các tiến trình node chạy ngầm mồ côi.
+3. **Tự động kích hoạt cơ sở dữ liệu PostgreSQL (Self-healing)**:
+   - Thêm hàm kiểm tra socket port 5433 trong `server.ts`. Nếu cluster cục bộ chưa chạy, server sẽ tự động gọi `pg_ctl start` mà người dùng không cần gõ lệnh thủ công.
+4. **Khắc phục lỗi ngắt tiếng và tải lại của YouTube IFrame (`MiniVideo.tsx`)**:
+   - Khắc phục lỗi di chuyển phần tử DOM `appendChild()` khiến IFrame bị reload và mất kết nối. Cố định phần tử chứa iframe và điều khiển hiển thị bằng CSS transform/opacity mượt mà, giúp video có thể mở/đóng tùy ý mà nhạc vẫn phát liên tục không ngắt.
+5. **Lỗi xác thực cơ sở dữ liệu PostgreSQL cục bộ**:
    - Khởi tạo cluster PostgreSQL chuyên biệt trên port 5433 với mã hóa UTF-8 và kích hoạt extension `unaccent`, đảm bảo kiểm thử và phát triển mượt mà trên môi trường Windows.
-2. **Lỗi Range Request khi Stream nhạc cục bộ**:
+6. **Lỗi Range Request khi Stream nhạc cục bộ**:
    - Đã xử lý đầy đủ header `Range: bytes=start-end`, phản hồi mã `206 Partial Content`, `Content-Range`, `Accept-Ranges: bytes` và dọn dẹp file descriptor khi client đóng kết nối.
-3. **Lỗi chồng tiếng giữa YouTube và HTML Audio**:
-   - Xử lý tại `PlayerEngine`: mỗi khi chuyển đổi bài hát giữa 2 nguồn khác nhau, adapter cũ bị `destroy()` và dừng ngay lập tức trước khi khởi tạo adapter mới.
-4. **Lỗi Window is not defined trong môi trường kiểm thử (SSR/Vitest)**:
+7. **Lỗi Window is not defined trong môi trường kiểm thử (SSR/Vitest)**:
    - Đã thêm kiểm tra `typeof window !== 'undefined'` cho trình lắng nghe phím tắt và adapter.
-5. **Lỗi TypeScript strict `noUnusedLocals`**:
+8. **Lỗi TypeScript strict `noUnusedLocals`**:
    - Đã tinh chỉnh và dọn dẹp toàn bộ các import và biến không sử dụng trong client.
-6. **Lỗi ngắt nhạc khi điều hướng trang**:
-   - Di chuyển toàn bộ audio state lên Zustand store và đặt `PlayerBar` ngoài `Routes` của React Router, giúp phát nhạc xuyên suốt khi chuyển route.
+

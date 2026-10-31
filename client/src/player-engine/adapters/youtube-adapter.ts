@@ -57,7 +57,12 @@ export class YouTubeAdapter implements PlayerAdapter {
       if (!mountEl) {
         mountEl = document.createElement('div');
         mountEl.id = 'youtube-player-mount';
-        document.body.appendChild(mountEl);
+        const container = document.getElementById('youtube-player-container');
+        if (container) {
+          container.appendChild(mountEl);
+        } else {
+          document.body.appendChild(mountEl);
+        }
       }
 
       if (this.player && this.isReady) {
@@ -71,8 +76,8 @@ export class YouTubeAdapter implements PlayerAdapter {
       }
 
       this.player = new window.YT.Player('youtube-player-mount', {
-        height: '180',
-        width: '320',
+        height: '100%',
+        width: '100%',
         videoId,
         playerVars: {
           autoplay: autoPlay ? 1 : 0,
@@ -172,14 +177,12 @@ export class YouTubeAdapter implements PlayerAdapter {
 
   destroy(): void {
     this.stopTimeTicker();
-    if (this.player && typeof this.player.destroy === 'function') {
+    if (this.player && typeof this.player.pauseVideo === 'function') {
       try {
-        this.player.destroy();
+        this.player.pauseVideo();
       } catch {
         // ignore
       }
-      this.player = null;
-      this.isReady = false;
     }
   }
 }
