@@ -6,6 +6,7 @@ import { api } from '../api/client.js';
 import { SongRow } from '../components/song/SongRow.js';
 import { Button } from '../components/common/Button.js';
 import { usePlayerStore } from '../stores/player-store.js';
+import { useThemeStore } from '../stores/theme-store.js';
 import { formatFollowers, getTrackPlayCount } from '../utils/format.js';
 import { UnifiedTrack } from '../types/index.js';
 import { getGenreGradient } from '../utils/genre-styles.js';
@@ -36,6 +37,7 @@ type FilterTab = 'all' | 'popular' | 'newest' | 'mood';
 export const GenreDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { playTrack } = usePlayerStore();
+  const { isDark } = useThemeStore();
 
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [isSaved, setIsSaved] = useState(false);
@@ -162,10 +164,11 @@ export const GenreDetailPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3 pt-4">
             <button
               onClick={handlePlayAll}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-pill shadow-lg font-bold transition-all active:scale-95 cursor-pointer text-sm"
+              data-btn-white="true"
+              className="btn-play-all inline-flex items-center gap-2 px-6 py-2.5 rounded-pill shadow-lg font-bold transition-all active:scale-95 cursor-pointer text-sm"
               style={{ backgroundColor: '#ffffff', color: '#000000' }}
             >
-              <Play className="w-4 h-4 fill-black text-black ml-0.5" />
+              <Play className="w-4 h-4 ml-0.5" style={{ color: '#000000', fill: '#000000' }} />
               <span className="font-bold" style={{ color: '#000000' }}>Phát tất cả</span>
             </button>
 
@@ -252,19 +255,31 @@ export const GenreDetailPage: React.FC = () => {
               { id: 'popular', label: 'Phổ biến nhất' },
               { id: 'newest', label: 'Mới phát hành' },
               { id: 'mood', label: 'Theo tâm trạng' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as FilterTab)}
-                className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all whitespace-nowrap cursor-pointer ${
-                  activeTab === tab.id
-                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-black font-semibold shadow-sm'
-                    : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as FilterTab)}
+                  data-pill-active={isActive ? 'true' : undefined}
+                  style={
+                    isActive
+                      ? {
+                          backgroundColor: isDark ? '#ffffff' : '#171717',
+                          color: isDark ? '#000000' : '#ffffff',
+                        }
+                      : {}
+                  }
+                  className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? 'font-bold shadow-sm'
+                      : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

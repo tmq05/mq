@@ -35,6 +35,7 @@ export interface UnifiedArtist {
   imageUrl?: string;
   bio?: string;
   topTracks?: UnifiedTrack[];
+  followersCount?: number;
 }
 
 export interface UnifiedAlbum {

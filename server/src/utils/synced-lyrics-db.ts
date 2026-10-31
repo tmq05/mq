@@ -8,6 +8,51 @@ interface CuratedLyrics {
 
 export const CURATED_SYNCED_LYRICS: CuratedLyrics[] = [
   {
+    title: '24',
+    artist: 'W/N',
+    syncedLyrics: `[00:10.00]Chỉ là vì nơi này
+[00:14.50]Chỉ còn bóng tối, cô đơn mình anh
+[00:19.00]Muốn rời đi khỏi đây
+[00:23.50]Chỉ vì anh quá yếu đuối
+[00:28.00]Khóc nữa đi em ơi
+[00:32.50]Hãy để nước mắt rơi trên làn mi
+[00:37.00]Chỉ vì mọi thứ nơi đây mà
+[00:41.50]Thứ nơi đây, uhh-huh
+[00:46.00]Là vì anh quá yếu đuối
+[00:50.00]Chỉ tìm trong giấc mơ
+[00:54.00]Một mình anh ngây thơ
+[00:58.00]Chỉ là người đứng chờ
+[01:02.00]Chạy đi đâu em hỡi
+[01:06.00]Chạy về trong giấc mơ
+[01:10.00]Một mình anh tìm lối
+[01:14.00]Chẳng thể nào thoát ra
+[01:18.00]Đêm, anh lại nhớ đến em
+[01:21.00]Nhớ lại vài chuyện cũ
+[01:23.50]Nhớ lại hình bóng quá nỗi thân quen bên trong tâm hồn vẫn hiện hữu
+[01:28.00]Anh nhớ lời nói của cô gái đó, không phải qua chiếc điện thoại
+[01:32.50]Anh nhớ Quảng Nam vào ngày trái gió, ta không yêu theo kiểu hiện đại
+[01:37.00]Em có còn nhớ? Ngày ta xa chính xác đúng vào ngày đông chí
+[01:41.50]Anh đã lặng lẽ mua 5 đoá hồng dù không có tiền ở trong ví
+[01:46.00]Anh nghĩ đó là món quà kỉ niệm tặng em trước lúc em bước đi
+[01:50.50]Rồi giam mình vào trong căn phòng nhỏ nhìn bức ảnh đó đến ướt mi
+[01:55.00]Anh biết tình đắng như ly cà phê, thấm dần vào dòng suy nghĩ
+[01:59.50]Thiết tha không phải là cặp tình nhân nhưng có thể trở thành tri kỷ
+[02:04.00]Anh không như họ, anh vẫn muốn đi tìm lại anh của ngày đó
+[02:08.50]Một ngày bình thường nhìn nỗi nhớ chạy dọc trên ban công đầy gió
+[02:13.00]Tách cà phê sữa hoà quyện lại với vị khói thuốc Sài Gòn Bạc
+[02:17.50]Là cách anh rap, cách thả hồn vào những ngày dài còn nhạt
+[02:22.00]Là cứ như thế những giai điệu xuất hiện vào 2h đêm
+[02:26.50]Nói cho em biết trước hiên nhà vẫn có một ai chờ em
+[02:31.00]Là vì anh quá yếu đuối
+[02:35.00]Chỉ tìm trong giấc mơ
+[02:39.00]Một mình anh ngây thơ
+[02:43.00]Chỉ là người đứng chờ
+[02:47.00]Chạy đi đâu em hỡi
+[02:51.00]Chạy về trong giấc mơ
+[02:55.00]Một mình anh tìm lối
+[02:59.00]Chẳng thể nào thoát ra...`,
+  },
+  {
     title: '2 4',
     artist: 'W/N',
     syncedLyrics: `[00:10.00]Chỉ là vì nơi này

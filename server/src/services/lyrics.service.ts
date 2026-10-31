@@ -152,7 +152,16 @@ export class LyricsService {
     const cleanTitle = cleanTitleForLyrics(title) || title.trim();
     const cleanArtist = cleanArtistForLyrics(artist) || artist.trim();
 
-    // 1. Try Zing MP3 official studio LRC (Highest precision, matched to authentic track)
+    // 1. Check Curated Synced Lyrics Library first for instant 0ms verified response
+    const curatedLrc = findCuratedLyrics(cleanTitle, cleanArtist);
+    if (curatedLrc) {
+      return {
+        syncedLyrics: curatedLrc,
+        source: 'curated',
+      };
+    }
+
+    // 2. Try Zing MP3 official studio LRC (Highest precision, matched to authentic track)
     const zingLrc = await fetchZingLyrics(cleanTitle, cleanArtist);
     if (zingLrc) {
       return {
@@ -173,15 +182,6 @@ export class LyricsService {
       } catch {
         // proceed
       }
-    }
-
-    // 3. Check Curated Synced Lyrics Library
-    const curatedLrc = findCuratedLyrics(cleanTitle, cleanArtist);
-    if (curatedLrc) {
-      return {
-        syncedLyrics: curatedLrc,
-        source: 'curated',
-      };
     }
 
     // 4. Try lyrics.ovh API (Fast public lyrics library)

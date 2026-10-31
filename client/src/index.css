@@ -30,10 +30,19 @@
 
   /* Inverted elements (white buttons / active chips in dark mode) must have black text */
   .dark .text-black,
+  .dark .text-black *,
   .dark .dark\:text-black,
+  .dark .dark\:text-black *,
   .dark .dark\:text-neutral-900,
-  .dark [data-btn-white] {
+  .dark .dark\:text-neutral-900 *,
+  .dark [data-btn-white],
+  .dark [data-btn-white] *,
+  .dark button.dark\:bg-white,
+  .dark button.dark\:bg-white *,
+  .dark .btn-play-all,
+  .dark .btn-play-all * {
     color: #000000 !important;
+    fill: #000000 !important;
   }
 
   .dark .text-body,

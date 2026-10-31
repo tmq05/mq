@@ -10,10 +10,12 @@ import { Button } from '../components/common/Button.js';
 import { usePlayerStore } from '../stores/player-store.js';
 import { UnifiedTrack, Genre, Album } from '../types/index.js';
 import { formatAlbumArtist, formatFollowers } from '../utils/format.js';
-import { getGenreGradient } from '../utils/genre-styles.js';
+import { getGenreGradient, getGenreColor } from '../utils/genre-styles.js';
+import { useThemeStore } from '../stores/theme-store.js';
 
 export const Home: React.FC = () => {
   const { playTrack, currentTrack } = usePlayerStore();
+  const { isDark } = useThemeStore();
 
   const [genreCategory, setGenreCategory] = useState<'all' | 'vietnam' | 'international' | 'mood'>('all');
   const [genreSearch, setGenreSearch] = useState('');
@@ -255,19 +257,31 @@ export const Home: React.FC = () => {
                     { id: 'vietnam', label: 'Việt Nam' },
                     { id: 'international', label: 'Quốc tế' },
                     { id: 'mood', label: 'Tâm trạng & Hoạt động' },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setGenreCategory(tab.id as any)}
-                      className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all whitespace-nowrap cursor-pointer ${
-                        genreCategory === tab.id
-                          ? 'bg-neutral-900 text-white dark:bg-white dark:text-black font-semibold shadow-sm'
-                          : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
+                  ].map((tab) => {
+                    const isActive = genreCategory === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setGenreCategory(tab.id as any)}
+                        data-pill-active={isActive ? 'true' : undefined}
+                        style={
+                          isActive
+                            ? {
+                                backgroundColor: isDark ? '#ffffff' : '#171717',
+                                color: isDark ? '#000000' : '#ffffff',
+                              }
+                            : {}
+                        }
+                        className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all whitespace-nowrap cursor-pointer ${
+                          isActive
+                            ? 'font-bold shadow-sm'
+                            : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Quick Genre Search */}
@@ -296,8 +310,11 @@ export const Home: React.FC = () => {
                     <Link
                       key={genre.id}
                       to={`/genres/${genre.slug}`}
-                      style={{ background: getGenreGradient(genre.slug) }}
-                      className="group relative overflow-hidden rounded-2xl p-4 h-36 sm:h-40 flex flex-col justify-between shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+                      style={{
+                        background: getGenreGradient(genre.slug),
+                        backgroundColor: getGenreColor(genre.slug),
+                      }}
+                      className="group relative overflow-hidden rounded-2xl p-4 h-36 sm:h-40 flex flex-col justify-between shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer border border-white/10"
                     >
                       {/* Top-Left: Category Label & Bold Genre Name */}
                       <div className="relative z-10 pr-10">
