@@ -10,6 +10,7 @@ import { Button } from '../components/common/Button.js';
 import { usePlayerStore } from '../stores/player-store.js';
 import { UnifiedTrack, Genre, Album } from '../types/index.js';
 import { formatAlbumArtist, formatFollowers } from '../utils/format.js';
+import { getGenreGradient } from '../utils/genre-styles.js';
 
 export const Home: React.FC = () => {
   const { playTrack, currentTrack } = usePlayerStore();
@@ -248,7 +249,7 @@ export const Home: React.FC = () => {
 
               {/* Category Filter Chips & Search Bar */}
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
                   {[
                     { id: 'all', label: 'Tất cả' },
                     { id: 'vietnam', label: 'Việt Nam' },
@@ -258,10 +259,10 @@ export const Home: React.FC = () => {
                     <button
                       key={tab.id}
                       onClick={() => setGenreCategory(tab.id as any)}
-                      className={`px-3 py-1 rounded-pill text-xs font-mono transition-colors whitespace-nowrap ${
+                      className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all whitespace-nowrap ${
                         genreCategory === tab.id
-                          ? 'bg-ink dark:bg-white text-white dark:text-black font-semibold shadow-sm'
-                          : 'bg-surface-soft dark:bg-surface-dark-soft text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-neutral-800 border border-hairline dark:border-hairline-dark font-medium'
+                          ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-semibold shadow-sm'
+                          : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
                       }`}
                     >
                       {tab.label}
@@ -271,13 +272,13 @@ export const Home: React.FC = () => {
 
                 {/* Quick Genre Search */}
                 <div className="relative w-full sm:w-48">
-                  <Search className="w-3.5 h-3.5 text-mute absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
                     placeholder="Lọc thể loại..."
                     value={genreSearch}
                     onChange={(e) => setGenreSearch(e.target.value)}
-                    className="w-full h-8 pl-8 pr-3 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-xs text-ink dark:text-white placeholder-mute focus:outline-none focus:ring-1 focus:ring-ink dark:focus:ring-white transition-all shadow-subtle"
+                    className="w-full h-8 pl-8 pr-3 rounded-pill bg-white dark:bg-neutral-800/90 border border-neutral-300 dark:border-neutral-700 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white transition-all shadow-subtle font-sans"
                   />
                 </div>
               </div>
@@ -285,23 +286,23 @@ export const Home: React.FC = () => {
 
             {/* 3D Tilted Cards Grid */}
             {displayedGenres.length === 0 ? (
-              <div className="py-12 text-center text-xs text-mute">
+              <div className="py-12 text-center text-xs text-neutral-500 dark:text-neutral-400 font-sans">
                 Không tìm thấy thể loại nào phù hợp với từ khóa "{genreSearch}".
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {displayedGenres.map((genre) => {
-                  const gradientClass = genre.gradient || 'from-emerald-500 to-teal-700';
                   return (
                     <Link
                       key={genre.id}
                       to={`/genres/${genre.slug}`}
-                      className={`group relative overflow-hidden rounded-2xl p-4 h-36 sm:h-40 flex flex-col justify-between shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer bg-gradient-to-br ${gradientClass}`}
+                      style={{ background: getGenreGradient(genre.slug) }}
+                      className="group relative overflow-hidden rounded-2xl p-4 h-36 sm:h-40 flex flex-col justify-between shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer"
                     >
                       {/* Top-Left: Category Label & Bold Genre Name */}
                       <div className="relative z-10 pr-10">
                         {genre.categoryLabel && (
-                          <span className="block text-[10px] font-mono text-white/80 uppercase tracking-wider mb-1">
+                          <span className="block text-[10px] font-sans font-medium text-white/90 uppercase tracking-wider mb-1">
                             {genre.categoryLabel}
                           </span>
                         )}

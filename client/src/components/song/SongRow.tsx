@@ -81,14 +81,14 @@ export const SongRow: React.FC<SongRowProps> = ({
       onClick={handleRowClick}
       className={`group flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors cursor-pointer select-none ${
         isCurrent
-          ? 'bg-surface-soft dark:bg-surface-dark-soft'
-          : 'hover:bg-surface-soft/80 dark:hover:bg-surface-dark-soft/60'
+          ? 'bg-neutral-100 dark:bg-neutral-800/80 shadow-xs'
+          : 'hover:bg-neutral-100/90 dark:hover:bg-neutral-800/50'
       }`}
     >
       {/* Left: Index/Play + Cover + Title/Artist */}
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
         {/* Index or Play icon */}
-        <div className="w-5 flex items-center justify-center shrink-0 text-xs text-neutral-500 dark:text-neutral-400 font-mono">
+        <div className="w-5 flex items-center justify-center shrink-0 text-xs text-neutral-400 dark:text-neutral-500 font-sans font-medium tabular-nums">
           {isCurrent && isPlaying ? (
             <div className="flex items-end gap-0.5 h-3.5">
               <span className="w-0.5 h-full bg-primary dark:bg-white animate-pulse" />
@@ -119,16 +119,16 @@ export const SongRow: React.FC<SongRowProps> = ({
         {/* Text */}
         <div className="flex flex-col min-w-0 pr-2">
           <span
-            className={`text-sm font-medium truncate ${
-              isCurrent ? 'text-black dark:text-white font-semibold' : 'text-neutral-900 dark:text-white'
+            className={`text-sm font-semibold truncate ${
+              isCurrent ? 'text-black dark:text-white font-bold' : 'text-neutral-900 dark:text-white'
             }`}
             title={track.title}
           >
             {displayTitle}
           </span>
-          <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate flex items-center gap-1.5">
+          <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate flex items-center gap-1.5 font-sans">
             <span>{formatArtists(track.artists)}</span>
-            <span className="md:hidden text-neutral-400 dark:text-neutral-500 font-mono text-[10px]">
+            <span className="md:hidden text-neutral-400 dark:text-neutral-500 font-sans text-[11px]">
               · {formatPlays(playCount)} lượt nghe
             </span>
           </span>
@@ -137,14 +137,14 @@ export const SongRow: React.FC<SongRowProps> = ({
 
       {/* Middle 1: Album Name (Desktop - only shown when not hideAlbum and album has value) */}
       {!hideAlbum && track.album && track.album !== '—' && (
-        <div className="hidden md:block w-1/4 text-xs text-neutral-500 dark:text-neutral-400 truncate px-2">
+        <div className="hidden md:block w-1/4 text-xs text-neutral-500 dark:text-neutral-400 truncate px-2 font-sans">
           {track.album}
         </div>
       )}
 
       {/* Middle 2: Play count (Desktop) */}
       <div
-        className="hidden lg:flex items-center gap-1.5 w-24 text-xs text-neutral-500 dark:text-neutral-400 font-mono px-2 shrink-0"
+        className="hidden lg:flex items-center gap-1.5 w-24 text-xs text-neutral-500 dark:text-neutral-400 font-sans font-medium tabular-nums px-2 shrink-0"
         title={`${playCount.toLocaleString('vi-VN')} lượt nghe`}
       >
         <Headphones className="w-3.5 h-3.5 opacity-60 shrink-0" />
@@ -172,7 +172,7 @@ export const SongRow: React.FC<SongRowProps> = ({
           <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
         </button>
 
-        <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400 w-10 text-right">
+        <span className="text-xs font-sans font-medium tabular-nums text-neutral-500 dark:text-neutral-400 w-10 text-right">
           {track.durationMs > 0 ? formatMs(track.durationMs) : '—'}
         </span>
 

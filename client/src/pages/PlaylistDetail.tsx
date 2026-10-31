@@ -112,7 +112,7 @@ export const PlaylistDetailPage: React.FC = () => {
         </div>
 
         <div className="flex flex-col gap-2 min-w-0 flex-1 text-center sm:text-left">
-          <span className="text-xs font-mono font-semibold uppercase tracking-wider text-body dark:text-mute">
+          <span className="text-xs font-sans font-semibold uppercase tracking-wider text-body dark:text-mute">
             {playlist.isPublic ? 'Playlist công khai' : 'Playlist riêng tư'}
           </span>
           <h1 className="font-display font-black text-2xl sm:text-4xl text-ink dark:text-white truncate">

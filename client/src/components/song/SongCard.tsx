@@ -136,7 +136,7 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
         <div className="mt-auto flex items-center justify-between gap-1 pt-1">
           <SourceBadge isFullLength={track.isFullLength} source={track.source} />
           <span
-            className="inline-flex items-center gap-1 text-[10px] font-mono text-neutral-500 dark:text-neutral-400"
+            className="inline-flex items-center gap-1 text-[11px] font-sans font-medium tabular-nums text-neutral-500 dark:text-neutral-400"
             title={`${playCount.toLocaleString('vi-VN')} lượt nghe`}
           >
             <Headphones className="w-3 h-3 opacity-60" />

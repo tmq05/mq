@@ -53,9 +53,9 @@ export const ProfilePage: React.FC = () => {
           </div>
           <div>
             <h3 className="font-semibold text-sm text-ink dark:text-white">{user.name}</h3>
-            <span className="text-xs text-mute font-mono">{user.email}</span>
+            <span className="text-xs text-mute font-sans">{user.email}</span>
             <div className="mt-1">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-pill bg-neutral-100 dark:bg-neutral-800 text-charcoal dark:text-mute">
+              <span className="text-[11px] font-sans font-medium px-2 py-0.5 rounded-pill bg-neutral-100 dark:bg-neutral-800 text-charcoal dark:text-mute">
                 Vai trò: {user.role}
               </span>
             </div>

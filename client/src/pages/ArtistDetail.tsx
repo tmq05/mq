@@ -71,7 +71,7 @@ export const ArtistDetailPage: React.FC = () => {
     return (
       <div className="py-20 flex flex-col items-center justify-center space-y-4">
         <span className="w-8 h-8 border-2 border-ink dark:border-white border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm font-mono text-mute">Đang tải thông tin nghệ sĩ...</span>
+        <span className="text-sm font-sans text-mute">Đang tải thông tin nghệ sĩ...</span>
       </div>
     );
   }
@@ -101,7 +101,7 @@ export const ArtistDetailPage: React.FC = () => {
       <div>
         <Link
           to="/artists"
-          className="inline-flex items-center gap-1.5 text-xs font-mono text-neutral-500 hover:text-ink dark:hover:text-white transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-sans font-medium text-neutral-500 hover:text-ink dark:hover:text-white transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Quay lại danh sách nghệ sĩ</span>
@@ -128,7 +128,7 @@ export const ArtistDetailPage: React.FC = () => {
 
         {/* Artist Details */}
         <div className="flex-1 min-w-0 text-center md:text-left space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-xs font-mono font-medium">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-xs font-sans font-medium">
             <Check className="w-3 h-3 text-blue-600 dark:text-blue-400 stroke-[3]" />
             <span>Nghệ sĩ chính thức</span>
           </div>
@@ -137,7 +137,7 @@ export const ArtistDetailPage: React.FC = () => {
             {artist.name}
           </h1>
 
-          <div className="flex items-center justify-center md:justify-start gap-4 text-xs font-mono text-neutral-500 dark:text-neutral-400">
+          <div className="flex items-center justify-center md:justify-start gap-4 text-xs font-sans font-medium text-neutral-500 dark:text-neutral-400">
             <span className="flex items-center gap-1">
               <Users className="w-3.5 h-3.5" />
               {followerCount.toLocaleString('vi-VN')} người theo dõi
@@ -192,7 +192,7 @@ export const ArtistDetailPage: React.FC = () => {
             </h2>
           </div>
           {artist.topTracks.length > 0 && (
-            <span className="text-xs font-mono text-neutral-500">
+            <span className="text-xs font-sans font-medium text-neutral-500">
               {artist.topTracks.length} bài hát
             </span>
           )}

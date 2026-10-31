@@ -132,7 +132,7 @@ export const NowPlayingHero: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <SourceBadge isFullLength={currentTrack.isFullLength} source={currentTrack.source} />
-          <span className="hidden sm:inline-flex items-center gap-1 text-xs font-mono text-neutral-500 dark:text-neutral-400">
+          <span className="hidden sm:inline-flex items-center gap-1 text-xs font-sans font-medium tabular-nums text-neutral-500 dark:text-neutral-400">
             <Headphones className="w-3.5 h-3.5 opacity-60" />
             {formatPlays(playCount)} lượt nghe
           </span>
@@ -201,7 +201,7 @@ export const NowPlayingHero: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="flex items-center justify-between text-xs font-mono text-neutral-500 dark:text-neutral-400">
+            <div className="flex items-center justify-between text-xs font-sans font-medium tabular-nums text-neutral-500 dark:text-neutral-400">
               <span>{formatDuration(currentTime)}</span>
               <span>{formatDuration(duration)}</span>
             </div>

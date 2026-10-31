@@ -65,7 +65,7 @@ export const CreditsPage: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-10 pb-16 pt-4">
       {/* Title */}
       <div className="space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-xs font-mono text-body dark:text-mute">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs font-sans font-medium text-neutral-700 dark:text-neutral-300">
           <ShieldCheck className="w-3.5 h-3.5 text-traffic-green" />
           <span>Cam kết minh bạch & Tuân thủ pháp lý</span>
         </div>
@@ -110,7 +110,7 @@ export const CreditsPage: React.FC = () => {
                 <h3 className="font-display font-bold text-lg text-ink dark:text-white">
                   {p.name}
                 </h3>
-                <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-charcoal dark:text-mute">
+                <span className="text-[11px] font-sans font-medium px-2.5 py-0.5 rounded-pill bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300">
                   {p.badge}
                 </span>
               </div>
@@ -118,7 +118,7 @@ export const CreditsPage: React.FC = () => {
             </div>
 
             <div className="pt-2 border-t border-hairline dark:border-hairline-dark flex items-center justify-between text-xs text-mute">
-              <span className="font-mono text-[11px]">{p.license}</span>
+              <span className="font-sans font-medium text-[11px]">{p.license}</span>
               <a
                 href={p.link}
                 target="_blank"

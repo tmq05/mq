@@ -234,3 +234,4 @@ export const GENRES_CATALOG: GenreMeta[] = [
     searchQueries: ['Deep Sleep Sounds', 'Night Ambient', 'Calm Waves'],
   },
 ];
+

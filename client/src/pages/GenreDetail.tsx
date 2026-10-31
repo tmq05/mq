@@ -8,6 +8,7 @@ import { Button } from '../components/common/Button.js';
 import { usePlayerStore } from '../stores/player-store.js';
 import { formatFollowers, getTrackPlayCount } from '../utils/format.js';
 import { UnifiedTrack } from '../types/index.js';
+import { getGenreGradient } from '../utils/genre-styles.js';
 
 interface GenreDetailData {
   genre: {
@@ -112,7 +113,7 @@ export const GenreDetailPage: React.FC = () => {
     );
   }
 
-  const gradientClass = genre.gradient || 'from-emerald-600 to-teal-800';
+
 
   return (
     <div className="space-y-10 pb-16 max-w-7xl mx-auto">
@@ -128,10 +129,11 @@ export const GenreDetailPage: React.FC = () => {
 
       {/* Hero Banner with Bespoke Genre Gradient */}
       <section
-        className={`relative overflow-hidden rounded-3xl p-6 sm:p-10 text-white shadow-xl bg-gradient-to-br ${gradientClass}`}
+        style={{ background: getGenreGradient(genre.slug) }}
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-10 text-white shadow-xl"
       >
         <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold uppercase tracking-wider text-white">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-sans font-semibold uppercase tracking-wider text-white">
             <Sparkles className="w-3.5 h-3.5" />
             <span>{genre.categoryLabel || 'Thể loại âm nhạc'}</span>
           </div>
@@ -140,11 +142,11 @@ export const GenreDetailPage: React.FC = () => {
             {genre.name}
           </h1>
 
-          <p className="text-base sm:text-lg text-white/90 leading-relaxed max-w-xl font-normal drop-shadow-sm">
+          <p className="text-base sm:text-lg text-white/95 leading-relaxed max-w-xl font-normal drop-shadow-sm font-sans">
             {genre.description}
           </p>
 
-          <div className="flex flex-wrap items-center gap-3 pt-2 text-xs sm:text-sm text-white/80 font-mono">
+          <div className="flex flex-wrap items-center gap-3 pt-2 text-xs sm:text-sm text-white/90 font-sans font-medium">
             <span>{songs.length} bài hát tuyển chọn</span>
             <span>·</span>
             <span>100% full track</span>
@@ -220,7 +222,7 @@ export const GenreDetailPage: React.FC = () => {
                 <h4 className="font-semibold text-xs sm:text-sm truncate w-full text-neutral-900 dark:text-white group-hover:underline">
                   {artist.name}
                 </h4>
-                <p className="text-[11px] font-mono text-neutral-500 dark:text-neutral-400 mt-0.5">
+                <p className="text-[11px] font-sans font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
                   {formatFollowers(artist.followers)}
                 </p>
               </Link>
@@ -234,7 +236,7 @@ export const GenreDetailPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline dark:border-hairline-dark pb-3">
           <div className="flex items-center gap-2.5">
             <Music2 className="w-5 h-5 text-red-500" />
-            <h2 className="font-display font-bold text-xl text-ink dark:text-white">
+            <h2 className="font-display font-bold text-xl text-neutral-900 dark:text-white">
               Tuyển tập bài hát ({filteredSongs.length})
             </h2>
           </div>
@@ -250,10 +252,10 @@ export const GenreDetailPage: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as FilterTab)}
-                className={`px-3.5 py-1.5 rounded-pill text-xs font-mono transition-colors whitespace-nowrap ${
+                className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'bg-ink dark:bg-white text-white dark:text-black font-semibold shadow-sm'
-                    : 'bg-surface-soft dark:bg-surface-dark-soft text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-neutral-800 border border-hairline dark:border-hairline-dark font-medium'
+                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-semibold shadow-sm'
+                    : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
                 }`}
               >
                 {tab.label}

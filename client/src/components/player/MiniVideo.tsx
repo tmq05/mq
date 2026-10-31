@@ -42,7 +42,7 @@ export const MiniVideo: React.FC = () => {
           <span className="w-2.5 h-2.5 rounded-full bg-traffic-red" />
           <span className="w-2.5 h-2.5 rounded-full bg-traffic-yellow" />
           <span className="w-2.5 h-2.5 rounded-full bg-traffic-green" />
-          <span className="ml-2 text-xs font-mono font-medium text-body dark:text-mute truncate max-w-[170px] flex items-center gap-1">
+          <span className="ml-2 text-xs font-sans font-medium text-body dark:text-mute truncate max-w-[170px] flex items-center gap-1">
             <Tv className={`w-3 h-3 ${getSourceIconColor()}`} />
             {currentTrack?.title || getSourceLabel()}
           </span>

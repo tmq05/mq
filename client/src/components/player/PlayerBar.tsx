@@ -249,7 +249,7 @@ export const PlayerBar: React.FC = () => {
           </div>
 
           {/* Progress Slider */}
-          <div className="w-full flex items-center gap-2.5 text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
+          <div className="w-full flex items-center gap-2.5 text-xs font-sans font-medium tabular-nums text-neutral-500 dark:text-neutral-400">
             <span>{formatDuration(effectiveTime)}</span>
             <div className="relative flex-1 flex items-center h-4 cursor-pointer group">
               <input

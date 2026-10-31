@@ -115,7 +115,7 @@ export const ArtistsPage: React.FC = () => {
                 {artist.name}
               </h3>
 
-              <span className="text-[11px] font-mono text-traffic-green font-semibold mb-2">
+              <span className="text-xs font-sans font-medium text-emerald-600 dark:text-emerald-400 mb-2">
                 {formatFollowers(artist._count?.followers)}
               </span>
 

@@ -100,7 +100,7 @@ export const SearchPage: React.FC = () => {
           />
         </div>
 
-        {/* Source Filter Chips matching DESIGN.md command-tag */}
+        {/* Source Filter Chips */}
         <div className="flex flex-wrap items-center justify-center gap-2">
           {sourcesList.map((s) => (
             <button
@@ -109,10 +109,10 @@ export const SearchPage: React.FC = () => {
                 setActiveSource(s.id);
                 if (s.id === 'youtube') setIncludeYouTube(true);
               }}
-              className={`px-3 py-1 rounded-pill text-xs font-mono transition-colors ${
+              className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all ${
                 activeSource === s.id
-                  ? 'bg-ink dark:bg-white text-white dark:text-black font-semibold shadow-sm'
-                  : 'bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 font-medium'
+                  ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-semibold shadow-sm'
+                  : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
               }`}
             >
               {s.label}

@@ -18,13 +18,13 @@ export const SourceBadge: React.FC<BadgeProps> = ({ isFullLength: _isFullLength 
   };
 
   return (
-    <div className={`inline-flex items-center gap-1.5 text-[11px] font-mono select-none ${className}`}>
+    <div className={`inline-flex items-center gap-1.5 text-[11px] font-sans font-medium select-none ${className}`}>
       {source && sourceLabels[source] && (
-        <span className="px-2 py-0.5 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-charcoal dark:text-mute">
+        <span className="px-2 py-0.5 rounded-pill bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/80 text-neutral-700 dark:text-neutral-300">
           {sourceLabels[source]}
         </span>
       )}
-      <span className="px-2 py-0.5 rounded-pill font-sans font-medium flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
+      <span className="px-2 py-0.5 rounded-pill font-sans font-medium flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200">
         <span className="w-1.5 h-1.5 rounded-full bg-traffic-green" />
         Full
       </span>
