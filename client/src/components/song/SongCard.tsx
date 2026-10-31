@@ -1,9 +1,12 @@
-import React from 'react';
-import { Play, Pause, Headphones } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, Pause, Headphones, Heart, Plus } from 'lucide-react';
 import { UnifiedTrack } from '../../types/index.js';
 import { usePlayerStore } from '../../stores/player-store.js';
+import { useAuthStore } from '../../stores/auth-store.js';
+import { usePlaylistModalStore } from '../../stores/playlist-modal-store.js';
 import { SourceBadge } from '../common/Badge.js';
-import { formatArtists, formatPlays, getTrackPlayCount } from '../../utils/format.js';
+import { formatArtists, formatPlays, getTrackPlayCount, cleanDisplayTitle } from '../../utils/format.js';
+import { api } from '../../api/client.js';
 
 interface SongCardProps {
   track: UnifiedTrack;
@@ -12,8 +15,15 @@ interface SongCardProps {
 
 export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
+  const { isAuthenticated } = useAuthStore();
+  const { openModal: openPlaylistModal } = usePlaylistModalStore();
+
+  const [isLiked, setIsLiked] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
+
   const isCurrent = currentTrack?.id === track.id;
   const playCount = getTrackPlayCount(track);
+  const displayTitle = cleanDisplayTitle(track.title);
 
   const handlePlayClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -24,6 +34,29 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
     }
   };
 
+  const handleToggleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      alert('Vui lòng đăng nhập để lưu bài hát yêu thích');
+      return;
+    }
+    if (isLiking) return;
+    setIsLiking(true);
+    try {
+      const res = await api.post('/songs/like', { track });
+      setIsLiked(res.data?.isLiked ?? !isLiked);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
+  const handleAddToPlaylist = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    openPlaylistModal(track);
+  };
+
   return (
     <div
       onClick={handlePlayClick}
@@ -32,8 +65,11 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
       {/* Cover Image Container */}
       <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-surface-soft dark:bg-surface-dark-soft mb-3">
         <img
-          src={track.coverUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'}
-          alt={track.title}
+          src={
+            track.coverUrl ||
+            'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'
+          }
+          alt={displayTitle}
           loading="lazy"
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           onError={(e) => {
@@ -41,6 +77,29 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
               'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80';
           }}
         />
+
+        {/* Top-Right Quick Action Icons (Like & Add to Playlist) */}
+        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <button
+            onClick={handleToggleLike}
+            disabled={isLiking}
+            className={`w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center transition-transform active:scale-90 ${
+              isLiked ? 'text-red-500 fill-red-500' : 'text-white hover:text-red-400'
+            }`}
+            title={isLiked ? 'Bỏ thích' : 'Yêu thích bài hát'}
+            aria-label="Thích"
+          >
+            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
+          </button>
+          <button
+            onClick={handleAddToPlaylist}
+            className="w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:text-traffic-green transition-transform active:scale-90"
+            title="Thêm vào playlist"
+            aria-label="Thêm vào playlist"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
         {/* Play Overlay Button */}
         <button
@@ -66,8 +125,9 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
           className={`font-semibold text-sm truncate mb-0.5 ${
             isCurrent ? 'text-black dark:text-white font-bold' : 'text-neutral-900 dark:text-white'
           }`}
+          title={track.title}
         >
-          {track.title}
+          {displayTitle}
         </h4>
         <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate mb-2">
           {formatArtists(track.artists)}

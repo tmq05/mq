@@ -85,3 +85,25 @@ export function getTrackPlayCount(track: { id?: string; title?: string; playCoun
   // Returns realistic play count between 1.2M and 39.8M
   return 1200000 + (abs % 38600000);
 }
+
+export function cleanDisplayTitle(title?: string): string {
+  if (!title) return '';
+  let clean = title;
+  // Remove trailing "- AM Remix", "- Remastered", "- Maxi Single", "- Single", "- EP"
+  clean = clean.replace(
+    /\s*-\s*(am remix|remastered|maxi single|single|ep|album|official audio|audio|nhacpro remix).*$/gi,
+    ''
+  );
+  // Remove parenthesized noisy suffixes
+  clean = clean.replace(
+    /\s*\([^)]*(official|music video|lyric video|audio|mv|remastered|nhacpro|maxi single)[^)]*\)/gi,
+    ''
+  );
+  clean = clean.replace(
+    /\s*\[[^\]]*(official|music video|lyric video|audio|mv|remastered|nhacpro|maxi single)[^\]]*\]/gi,
+    ''
+  );
+  // Remove trailing pipe
+  clean = clean.replace(/\s*\|.*$/g, '');
+  return clean.trim() || title;
+}

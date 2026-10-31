@@ -8,18 +8,24 @@ import { findCuratedLyrics } from '../utils/synced-lyrics-db.js';
 export interface LyricsResponse {
   syncedLyrics?: string;
   plainLyrics?: string;
-  source: 'lrclib' | 'curated' | 'local' | 'ovh' | 'none';
+  source: 'lrclib' | 'curated' | 'local' | 'ovh' | 'zingmp3' | 'none';
 }
 
 function cleanTitleForLyrics(raw: string): string {
   let title = raw;
   // Remove parenthesized suffixes: (Remix), (Official Music Video), (Lyric Video), [MV], (Audio), (Live), (Acoustic), (Prod. by ...)
-  title = title.replace(/\s*\([^)]*(remix|official|music video|lyric|mv|audio|live|acoustic|prod|ver|version|vietsub|karaoke|ft|feat)[^)]*\)/gi, '');
-  title = title.replace(/\s*\[[^\]]*(remix|official|music video|lyric|mv|audio|live|acoustic|prod|ver|version|vietsub|karaoke|ft|feat)[^\]]*\]/gi, '');
+  title = title.replace(
+    /\s*\([^)]*(remix|official|music video|lyric|mv|audio|live|acoustic|prod|ver|version|vietsub|karaoke|ft|feat|am remix|nhacpro)[^)]*\)/gi,
+    ''
+  );
+  title = title.replace(
+    /\s*\[[^\]]*(remix|official|music video|lyric|mv|audio|live|acoustic|prod|ver|version|vietsub|karaoke|ft|feat|am remix|nhacpro)[^\]]*\]/gi,
+    ''
+  );
   // Remove pipe and after: " | Official MV", etc.
   title = title.replace(/\s*\|.*$/g, '');
-  // Remove trailing dash: " - Single", " - EP", " - Official Audio"
-  title = title.replace(/\s*-\s*(single|ep|album|remix|mv|official).*$/gi, '');
+  // Remove trailing dash: " - Single", " - EP", " - Official Audio", " - AM Remix"
+  title = title.replace(/\s*-\s*(single|ep|album|remix|mv|official|am remix|nhacpro|remastered).*$/gi, '');
   // Remove "feat. ..." or "ft. ..."
   title = title.replace(/\s+(feat\.|ft\.).*$/gi, '');
   return title.trim();
@@ -32,6 +38,61 @@ function cleanArtistForLyrics(raw: string): string {
   }
   artist = artist.replace(/\s+(x|ft\.|feat\.|&).*$/gi, '');
   return artist.trim();
+}
+
+async function fetchZingLyrics(title: string, artist: string): Promise<string | null> {
+  try {
+    const ZingPkg: any = await import('zingmp3-api-full');
+    const ZingMp3 = ZingPkg.ZingMp3 || ZingPkg.default?.ZingMp3;
+    if (!ZingMp3) return null;
+
+    const query = `${title} ${artist}`.trim();
+    const searchRes = await ZingMp3.search(query);
+    const songs = searchRes?.data?.songs;
+    if (!Array.isArray(songs) || songs.length === 0) return null;
+
+    const song = songs[0];
+    if (!song?.encodeId) return null;
+
+    const lyricRes = await ZingMp3.getLyric(song.encodeId);
+    if (lyricRes?.err !== 0 || !lyricRes?.data) return null;
+
+    // 1. If static .lrc file is provided by Zing CDN
+    if (lyricRes.data.file) {
+      try {
+        const lrcRes = await axios.get(lyricRes.data.file, { timeout: 3500 });
+        if (typeof lrcRes.data === 'string' && lrcRes.data.includes('[')) {
+          return lrcRes.data;
+        }
+      } catch {
+        // Fallback to sentences below
+      }
+    }
+
+    // 2. Convert sentence timestamps to LRC format
+    if (Array.isArray(lyricRes.data.sentences) && lyricRes.data.sentences.length > 0) {
+      const lrcLines: string[] = [];
+      for (const sent of lyricRes.data.sentences) {
+        if (Array.isArray(sent.words) && sent.words.length > 0) {
+          const startMs = sent.words[0].startTime || 0;
+          const mins = Math.floor(startMs / 60000);
+          const secs = Math.floor((startMs % 60000) / 1000);
+          const millis = Math.floor((startMs % 1000) / 10);
+          const timeTag = `[${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${millis.toString().padStart(2, '0')}]`;
+          const text = sent.words.map((w: any) => w.data).join(' ').trim();
+          if (text) {
+            lrcLines.push(`${timeTag}${text}`);
+          }
+        }
+      }
+      if (lrcLines.length > 0) {
+        return lrcLines.join('\n');
+      }
+    }
+  } catch (err: any) {
+    logger.warn({ err: err.message, title, artist }, 'Zing MP3 lyric fetch warning');
+  }
+  return null;
 }
 
 export class LyricsService {
@@ -70,7 +131,16 @@ export class LyricsService {
       };
     }
 
-    // 3. Check Cache
+    // 3. Try Zing MP3 official LRC (exact millisecond-precision timestamps matching intros)
+    const zingLrc = await fetchZingLyrics(cleanTitle, cleanArtist);
+    if (zingLrc) {
+      return {
+        syncedLyrics: zingLrc,
+        source: 'zingmp3',
+      };
+    }
+
+    // 4. Check Cache
     const cacheKey = `lyrics:${cleanArtist.toLowerCase()}:${cleanTitle.toLowerCase()}`;
     const cached = await cache.get(cacheKey);
     if (cached) {
@@ -84,7 +154,7 @@ export class LyricsService {
       }
     }
 
-    // 4. Try lyrics.ovh API (Fast public lyrics library)
+    // 5. Try lyrics.ovh API (Fast public lyrics library)
     try {
       const ovhRes = await axios.get(
         `https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`,
@@ -103,7 +173,7 @@ export class LyricsService {
     }
 
     if (env.LRCLIB_ENABLED) {
-      // 5. Try LRCLIB API with short timeout
+      // 6. Try LRCLIB API
       try {
         const durationSeconds = durationMs ? Math.round(durationMs / 1000) : undefined;
         const res = await axios.get('https://lrclib.net/api/get', {
@@ -149,13 +219,12 @@ export class LyricsService {
             await cache.set(cacheKey, JSON.stringify(data), 'EX', 86400);
             return data;
           }
-        } catch (err: any) {
-          logger.debug({ err: err.message }, 'LRCLIB search fallback failed');
+        } catch {
+          // ignore
         }
       }
     }
 
-    // Do NOT cache empty result permanently, so subsequent requests or alternative queries can retry
     return { source: 'none' };
   }
 }

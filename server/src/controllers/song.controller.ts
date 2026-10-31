@@ -244,8 +244,8 @@ export class SongController {
     try {
       // Fetch genuine Vietnamese hits from Spotify and Zing MP3
       const [spotifyRes, zingRes] = await Promise.allSettled([
-        spotifyProvider.search('hit nhạc việt', 'track'),
-        zingMp3Provider.search('Sơn Tùng', 'track'),
+        spotifyProvider.search('V-Pop hay nhất', 'track'),
+        zingMp3Provider.search('Sơn Tùng M-TP', 'track'),
       ]);
 
       const candidates: any[] = [];
@@ -258,7 +258,12 @@ export class SongController {
 
       const deduplicated = searchService
         .deduplicateTracks(candidates)
-        .filter((t) => t.source !== 'local' && t.source !== 'deezer')
+        .filter((t) => {
+          if (t.source === 'local' || t.source === 'deezer') return false;
+          const lower = t.title.toLowerCase();
+          if (lower.includes('am remix') || lower.includes('nhacpro') || lower.includes('remix - am')) return false;
+          return true;
+        })
         .slice(0, 10);
 
       res.json({ vpop: deduplicated });

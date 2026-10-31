@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Mic2, AlertCircle, RotateCcw } from 'lucide-react';
+import { X, Mic2, AlertCircle, RotateCcw, Zap } from 'lucide-react';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { api } from '../../api/client.js';
 import { LyricsLine } from '../../types/index.js';
-import { formatArtists } from '../../utils/format.js';
+import { formatArtists, cleanDisplayTitle } from '../../utils/format.js';
 
 export const LyricsDrawer: React.FC = () => {
   const { currentTrack, currentTime, isLyricsOpen, toggleLyrics, seekTo } = usePlayerStore();
@@ -16,10 +16,26 @@ export const LyricsDrawer: React.FC = () => {
   const activeLineRef = useRef<HTMLParagraphElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Reset manual offset on track change
+  // Load saved offset from localStorage on track change
   useEffect(() => {
-    setManualOffsetMs(0);
+    if (!currentTrack?.id) {
+      setManualOffsetMs(0);
+      return;
+    }
+    const saved = localStorage.getItem(`lyrics_offset_${currentTrack.id}`);
+    if (saved) {
+      setManualOffsetMs(parseInt(saved, 10) || 0);
+    } else {
+      setManualOffsetMs(0);
+    }
   }, [currentTrack?.id]);
+
+  const updateOffset = (newOffset: number) => {
+    setManualOffsetMs(newOffset);
+    if (currentTrack?.id) {
+      localStorage.setItem(`lyrics_offset_${currentTrack.id}`, String(newOffset));
+    }
+  };
 
   // Enhanced LRC Parser: supports [offset: ms], [mm:ss.xx], [mm:ss:xx], and multiple tags
   function parseLrc(lrcText: string): LyricsLine[] {
@@ -56,7 +72,7 @@ export const LyricsDrawer: React.FC = () => {
   }
 
   // Auto-sync plain lyrics if no LRC timestamps exist
-  function autoSyncPlainLyrics(plainText: string, durationMs: number): LyricsLine[] {
+  function autoSyncPlainLyrics(plainText: string, durationMs: number, introDelayMs = 4000): LyricsLine[] {
     const rawLines = plainText
       .split('\n')
       .map((l) => l.trim())
@@ -65,8 +81,8 @@ export const LyricsDrawer: React.FC = () => {
     if (rawLines.length === 0) return [];
 
     const total = rawLines.length;
-    const startMs = 10000;
-    const endMs = Math.max(startMs + 30000, durationMs - 15000);
+    const startMs = introDelayMs;
+    const endMs = Math.max(startMs + 30000, durationMs - 12000);
     const step = (endMs - startMs) / Math.max(1, total - 1);
 
     return rawLines.map((text, i) => ({
@@ -106,7 +122,7 @@ export const LyricsDrawer: React.FC = () => {
           setPlainLyrics(null);
         } else if (res.data?.plainLyrics) {
           const duration = currentTrack.durationMs > 0 ? currentTrack.durationMs : 210000;
-          const autoSynced = autoSyncPlainLyrics(res.data.plainLyrics, duration);
+          const autoSynced = autoSyncPlainLyrics(res.data.plainLyrics, duration, 4000);
           setSyncedLines(autoSynced);
           setPlainLyrics(res.data.plainLyrics);
         } else {
@@ -148,6 +164,15 @@ export const LyricsDrawer: React.FC = () => {
     }
   }, [activeIndex]);
 
+  // Instant Sync: Match selected line or first line to current playback time
+  const handleSyncCurrentLineToMusic = (lineIndex: number) => {
+    if (!syncedLines[lineIndex]) return;
+    const lineTime = syncedLines[lineIndex].timeMs;
+    // Difference between audio time and line time becomes new manual offset
+    const newOffset = Math.round(currentTime * 1000 - lineTime);
+    updateOffset(newOffset);
+  };
+
   if (!isLyricsOpen) {
     return null;
   }
@@ -160,7 +185,7 @@ export const LyricsDrawer: React.FC = () => {
           <Mic2 className="w-5 h-5 text-traffic-green shrink-0" />
           <div className="min-w-0">
             <h3 className="font-semibold text-base text-neutral-900 dark:text-white truncate">
-              {currentTrack?.title}
+              {cleanDisplayTitle(currentTrack?.title)}
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
               {formatArtists(currentTrack?.artists)}
@@ -169,39 +194,50 @@ export const LyricsDrawer: React.FC = () => {
         </div>
 
         {/* Sync Controls & Close */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {syncedLines.length > 0 && (
-            <div className="flex items-center gap-1 bg-surface-soft dark:bg-surface-dark-soft px-2.5 py-1 rounded-pill border border-hairline dark:border-hairline-dark text-xs font-mono">
-              <span className="text-neutral-400 text-[11px] mr-1 hidden sm:inline">Khớp lời:</span>
+            <>
+              {/* Quick Sync to Current Moment Button */}
               <button
-                onClick={() => setManualOffsetMs((prev) => prev - 500)}
-                className="px-1.5 py-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 active:scale-95 transition-transform"
-                title="Lùi lời 0.5s"
+                onClick={() => handleSyncCurrentLineToMusic(Math.max(0, activeIndex))}
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-pill bg-traffic-green/10 hover:bg-traffic-green/20 border border-traffic-green/30 text-traffic-green text-xs font-semibold active:scale-95 transition-all"
+                title="Khớp câu đang hát với nhạc tại giây này"
               >
-                -0.5s
+                <Zap className="w-3 h-3 fill-current" />
+                <span>Khớp với nhạc</span>
               </button>
-              <button
-                onClick={() => setManualOffsetMs(0)}
-                className={`px-1.5 py-0.5 rounded text-[11px] flex items-center gap-1 ${
-                  manualOffsetMs === 0
-                    ? 'text-neutral-500'
-                    : 'bg-traffic-green/20 text-traffic-green font-bold'
-                }`}
-                title="Đặt lại độ trễ ban đầu"
-              >
-                {manualOffsetMs !== 0 && <RotateCcw className="w-2.5 h-2.5" />}
-                {manualOffsetMs === 0
-                  ? 'Chuẩn'
-                  : `${manualOffsetMs > 0 ? '+' : ''}${(manualOffsetMs / 1000).toFixed(1)}s`}
-              </button>
-              <button
-                onClick={() => setManualOffsetMs((prev) => prev + 500)}
-                className="px-1.5 py-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 active:scale-95 transition-transform"
-                title="Tiến lời 0.5s"
-              >
-                +0.5s
-              </button>
-            </div>
+
+              <div className="flex items-center gap-1 bg-surface-soft dark:bg-surface-dark-soft px-2.5 py-1 rounded-pill border border-hairline dark:border-hairline-dark text-xs font-mono">
+                <button
+                  onClick={() => updateOffset(manualOffsetMs - 500)}
+                  className="px-1.5 py-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 active:scale-95 transition-transform"
+                  title="Lùi lời 0.5s"
+                >
+                  -0.5s
+                </button>
+                <button
+                  onClick={() => updateOffset(0)}
+                  className={`px-1.5 py-0.5 rounded text-[11px] flex items-center gap-1 ${
+                    manualOffsetMs === 0
+                      ? 'text-neutral-500'
+                      : 'bg-traffic-green/20 text-traffic-green font-bold'
+                  }`}
+                  title="Đặt lại độ trễ ban đầu"
+                >
+                  {manualOffsetMs !== 0 && <RotateCcw className="w-2.5 h-2.5" />}
+                  {manualOffsetMs === 0
+                    ? 'Chuẩn'
+                    : `${manualOffsetMs > 0 ? '+' : ''}${(manualOffsetMs / 1000).toFixed(1)}s`}
+                </button>
+                <button
+                  onClick={() => updateOffset(manualOffsetMs + 500)}
+                  className="px-1.5 py-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 active:scale-95 transition-transform"
+                  title="Tiến lời 0.5s"
+                >
+                  +0.5s
+                </button>
+              </div>
+            </>
           )}
 
           <button
@@ -240,7 +276,7 @@ export const LyricsDrawer: React.FC = () => {
               Chưa có lời bài hát đồng bộ cho tác phẩm này
             </p>
             <p className="text-xs text-neutral-500 max-w-sm">
-              Hệ thống tự động tra cứu từ kho dữ liệu lời bài hát LRCLIB và kho lưu trữ của mq
+              Hệ thống tự động tra cứu từ kho dữ liệu Zing MP3, LRCLIB và kho lưu trữ của mq
             </p>
           </div>
         )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Play,
   Pause,
@@ -12,9 +12,14 @@ import {
   ListMusic,
   Mic2,
   Tv,
+  Heart,
+  Plus,
 } from 'lucide-react';
 import { usePlayerStore } from '../../stores/player-store.js';
-import { formatDuration, formatArtists } from '../../utils/format.js';
+import { useAuthStore } from '../../stores/auth-store.js';
+import { usePlaylistModalStore } from '../../stores/playlist-modal-store.js';
+import { api } from '../../api/client.js';
+import { formatDuration, formatArtists, cleanDisplayTitle } from '../../utils/format.js';
 import { SourceBadge } from '../common/Badge.js';
 
 export const PlayerBar: React.FC = () => {
@@ -44,8 +49,36 @@ export const PlayerBar: React.FC = () => {
     setMiniVideoOpen,
   } = usePlayerStore();
 
+  const { isAuthenticated } = useAuthStore();
+  const { openModal: openPlaylistModal } = usePlaylistModalStore();
+
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
+
+  // Check like status whenever currentTrack changes
+  useEffect(() => {
+    let isCancelled = false;
+    if (isAuthenticated && currentTrack?.id) {
+      api
+        .get('/users/likes')
+        .then((res) => {
+          if (isCancelled) return;
+          const likes: any[] = res.data?.likes || [];
+          const found = likes.some(
+            (l) => l.id === currentTrack.id || l.sourceId === currentTrack.sourceId
+          );
+          setIsLiked(found);
+        })
+        .catch(() => {});
+    } else {
+      setIsLiked(false);
+    }
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentTrack?.id, isAuthenticated]);
 
   if (!currentTrack) {
     return null;
@@ -74,14 +107,34 @@ export const PlayerBar: React.FC = () => {
     else setRepeatMode('off');
   };
 
+  const handleToggleLike = async () => {
+    if (!isAuthenticated) {
+      alert('Vui lòng đăng nhập để lưu bài hát yêu thích');
+      return;
+    }
+    if (isLiking) return;
+    setIsLiking(true);
+    try {
+      const res = await api.post('/songs/like', { track: currentTrack });
+      setIsLiked(res.data?.isLiked ?? !isLiked);
+    } catch (err) {
+      console.error('Like toggle error', err);
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-canvas/95 dark:bg-canvas-dark/95 backdrop-blur-md border-t border-hairline dark:border-hairline-dark px-4 py-2.5 select-none transition-all">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        {/* Left: Track Info */}
-        <div className="flex items-center gap-3 w-1/4 min-w-[200px]">
+        {/* Left: Track Info + Quick Like/Playlist */}
+        <div className="flex items-center gap-3 w-1/4 min-w-[220px]">
           <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-surface-soft shrink-0 border border-hairline dark:border-hairline-dark">
             <img
-              src={currentTrack.coverUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100&auto=format&fit=crop&q=80'}
+              src={
+                currentTrack.coverUrl ||
+                'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100&auto=format&fit=crop&q=80'
+              }
               alt={currentTrack.title}
               className="w-full h-full object-cover"
             />
@@ -92,9 +145,9 @@ export const PlayerBar: React.FC = () => {
             )}
           </div>
 
-          <div className="flex flex-col min-w-0">
+          <div className="flex flex-col min-w-0 pr-1">
             <span className="text-sm font-semibold truncate text-neutral-900 dark:text-white">
-              {currentTrack.title}
+              {cleanDisplayTitle(currentTrack.title)}
             </span>
             <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate">
               {formatArtists(currentTrack.artists)}
@@ -102,6 +155,31 @@ export const PlayerBar: React.FC = () => {
             <div className="mt-0.5">
               <SourceBadge isFullLength={currentTrack.isFullLength} source={currentTrack.source} />
             </div>
+          </div>
+
+          {/* Quick Actions: Favorite + Add to Playlist */}
+          <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+            <button
+              onClick={handleToggleLike}
+              disabled={isLiking}
+              className={`p-1.5 rounded-pill transition-all active:scale-90 ${
+                isLiked
+                  ? 'text-red-500 fill-red-500 hover:text-red-600'
+                  : 'text-neutral-400 hover:text-black dark:hover:text-white'
+              }`}
+              title={isLiked ? 'Bỏ thích bài hát' : 'Yêu thích bài hát'}
+              aria-label="Thích bài hát"
+            >
+              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+            </button>
+            <button
+              onClick={() => openPlaylistModal(currentTrack)}
+              className="p-1.5 rounded-pill text-neutral-400 hover:text-black dark:hover:text-white transition-colors active:scale-90"
+              title="Thêm vào playlist"
+              aria-label="Thêm vào playlist"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -112,7 +190,9 @@ export const PlayerBar: React.FC = () => {
             <button
               onClick={toggleShuffle}
               className={`p-1.5 rounded-pill transition-colors ${
-                isShuffle ? 'text-black dark:text-white font-bold' : 'text-neutral-400 hover:text-black dark:hover:text-white'
+                isShuffle
+                  ? 'text-black dark:text-white font-bold'
+                  : 'text-neutral-400 hover:text-black dark:hover:text-white'
               }`}
               title="Phát ngẫu nhiên"
             >
@@ -160,7 +240,11 @@ export const PlayerBar: React.FC = () => {
               }`}
               title={`Lặp lại: ${repeatMode}`}
             >
-              {repeatMode === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
+              {repeatMode === 'one' ? (
+                <Repeat1 className="w-4 h-4" />
+              ) : (
+                <Repeat className="w-4 h-4" />
+              )}
             </button>
           </div>
 
@@ -196,7 +280,7 @@ export const PlayerBar: React.FC = () => {
 
         {/* Right: Actions & Volume */}
         <div className="flex items-center justify-end gap-3 w-1/4">
-          {/* Mini video/embed toggle (for YouTube, Zing MP3, Spotify tracks) */}
+          {/* Mini video/embed toggle */}
           {(currentTrack.playbackType === 'youtube' ||
             currentTrack.source === 'youtube' ||
             currentTrack.source === 'zingmp3' ||
@@ -207,7 +291,7 @@ export const PlayerBar: React.FC = () => {
               className={`p-2 rounded-pill transition-colors ${
                 miniVideoOpen
                   ? 'bg-neutral-200 dark:bg-neutral-800 text-ink dark:text-white'
-                  : 'text-mute hover:text-ink dark:hover:text-white'
+                  : 'text-neutral-400 hover:text-black dark:hover:text-white'
               }`}
               title="Bật/Tắt khung phát video hoặc widget nhúng"
             >
@@ -221,7 +305,7 @@ export const PlayerBar: React.FC = () => {
             className={`p-2 rounded-pill transition-colors ${
               isLyricsOpen
                 ? 'bg-neutral-200 dark:bg-neutral-800 text-ink dark:text-white'
-                : 'text-mute hover:text-ink dark:hover:text-white'
+                : 'text-neutral-400 hover:text-black dark:hover:text-white'
             }`}
             title="Lời bài hát (Phím L)"
           >
@@ -234,7 +318,7 @@ export const PlayerBar: React.FC = () => {
             className={`p-2 rounded-pill transition-colors ${
               isQueueOpen
                 ? 'bg-neutral-200 dark:bg-neutral-800 text-ink dark:text-white'
-                : 'text-mute hover:text-ink dark:hover:text-white'
+                : 'text-neutral-400 hover:text-black dark:hover:text-white'
             }`}
             title="Hàng đợi phát nhạc"
           >
@@ -245,7 +329,7 @@ export const PlayerBar: React.FC = () => {
           <div className="hidden lg:flex items-center gap-2 group">
             <button
               onClick={toggleMute}
-              className="text-mute hover:text-ink dark:hover:text-white p-1"
+              className="text-neutral-400 hover:text-black dark:hover:text-white p-1"
               title="Bật/Tắt âm thanh (Phím M)"
             >
               {isMuted || volume === 0 ? (

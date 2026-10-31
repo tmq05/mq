@@ -9,6 +9,7 @@ import { PlayerBar } from './components/player/PlayerBar.js';
 import { MiniVideo } from './components/player/MiniVideo.js';
 import { LyricsDrawer } from './components/lyrics/LyricsDrawer.js';
 import { QueueDrawer } from './components/player/QueueDrawer.js';
+import { AddToPlaylistModal } from './components/playlist/AddToPlaylistModal.js';
 
 import { Home } from './pages/Home.js';
 import { SearchPage } from './pages/Search.js';
@@ -102,6 +103,9 @@ export const AppContent: React.FC = () => {
       {/* Reorderable Queue Drawer */}
       <QueueDrawer />
 
+      {/* Global Add to Playlist Modal */}
+      <AddToPlaylistModal />
+
       {/* Uninterrupted Global Player Bar */}
       <PlayerBar />
     </div>
@@ -119,4 +123,3 @@ export const App: React.FC = () => {
     </ErrorBoundary>
   );
 };
-

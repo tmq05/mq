@@ -5,13 +5,14 @@ import { Play, Sparkles, Flame, Radio, Disc3, Users, ArrowRight } from 'lucide-r
 import { api } from '../api/client.js';
 import { SongCard } from '../components/song/SongCard.js';
 import { SongRow } from '../components/song/SongRow.js';
+import { NowPlayingHero } from '../components/player/NowPlayingHero.js';
 import { Button } from '../components/common/Button.js';
 import { usePlayerStore } from '../stores/player-store.js';
 import { UnifiedTrack, Genre, Album } from '../types/index.js';
 import { formatAlbumArtist, formatFollowers } from '../utils/format.js';
 
 export const Home: React.FC = () => {
-  const { playTrack } = usePlayerStore();
+  const { playTrack, currentTrack } = usePlayerStore();
 
   // 1. Trending Songs
   const { data: trendingData, isLoading: trendingLoading } = useQuery({
@@ -49,12 +50,12 @@ export const Home: React.FC = () => {
     },
   });
 
-  // 5. Featured Artists
+  // 5. Artists
   const { data: artistsData } = useQuery({
     queryKey: ['featured-artists'],
     queryFn: async () => {
       const res = await api.get('/artists');
-      return res.data.artists as Array<{
+      return (res.data?.artists || []) as Array<{
         id: string;
         name: string;
         bio?: string;
@@ -71,12 +72,12 @@ export const Home: React.FC = () => {
   };
 
   return (
-    <div className="space-y-16 pb-12">
+    <div className="space-y-14 pb-12">
       {/* Hero Section matching DESIGN.md (Ollama minimalist README style) */}
-      <section className="text-center pt-8 pb-4 max-w-3xl mx-auto space-y-5">
+      <section className="text-center pt-6 pb-2 max-w-3xl mx-auto space-y-4">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-xs font-mono text-neutral-600 dark:text-neutral-300">
           <Sparkles className="w-3.5 h-3.5 text-traffic-green" />
-          <span>Âm nhạc đa nguồn · Không ngắt quãng</span>
+          <span>Âm nhạc đa nguồn · Trải nghiệm liền mạch</span>
         </div>
 
         <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-ink dark:text-white leading-[1.15]">
@@ -84,11 +85,11 @@ export const Home: React.FC = () => {
         </h1>
 
         <p className="text-base text-neutral-600 dark:text-neutral-300 max-w-xl mx-auto leading-relaxed">
-          Tìm kiếm và phát hàng triệu ca khúc từ Audius, Jamendo, Deezer, YouTube và kho nhạc
-          Việt Nam tuyển chọn — không quảng cáo gây rối, hoàn toàn liền mạch.
+          Tìm kiếm và phát trực tuyến hàng triệu ca khúc từ Spotify, Zing MP3, YouTube và kho
+          nghệ sĩ Việt Nam — không quảng cáo ngắt quãng, chất lượng full track.
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
           <Button
             size="lg"
             onClick={handlePlayAllTrending}
@@ -103,6 +104,9 @@ export const Home: React.FC = () => {
           </Link>
         </div>
       </section>
+
+      {/* Now Playing Banner (Section cho bài hát đang phát) */}
+      {currentTrack && <NowPlayingHero />}
 
       {/* Trending Section */}
       <section className="space-y-4">
@@ -159,6 +163,7 @@ export const Home: React.FC = () => {
               track={track}
               index={idx}
               queueContext={vpopData}
+              hideAlbum={true}
             />
           ))}
         </div>
@@ -267,7 +272,10 @@ export const Home: React.FC = () => {
               >
                 <div className="aspect-square w-full rounded-lg overflow-hidden bg-surface-soft mb-3">
                   <img
-                    src={album.coverUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'}
+                    src={
+                      album.coverUrl ||
+                      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'
+                    }
                     alt={album.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
@@ -286,4 +294,3 @@ export const Home: React.FC = () => {
     </div>
   );
 };
-

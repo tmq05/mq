@@ -3,7 +3,14 @@ import { Play, Heart, Plus, Headphones } from 'lucide-react';
 import { UnifiedTrack } from '../../types/index.js';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { useAuthStore } from '../../stores/auth-store.js';
-import { formatMs, formatArtists, formatPlays, getTrackPlayCount } from '../../utils/format.js';
+import { usePlaylistModalStore } from '../../stores/playlist-modal-store.js';
+import {
+  formatMs,
+  formatArtists,
+  formatPlays,
+  getTrackPlayCount,
+  cleanDisplayTitle,
+} from '../../utils/format.js';
 import { SourceBadge } from '../common/Badge.js';
 import { api } from '../../api/client.js';
 
@@ -13,6 +20,7 @@ interface SongRowProps {
   queueContext?: UnifiedTrack[];
   isInitiallyLiked?: boolean;
   onAddToPlaylist?: (track: UnifiedTrack) => void;
+  hideAlbum?: boolean;
 }
 
 export const SongRow: React.FC<SongRowProps> = ({
@@ -21,14 +29,17 @@ export const SongRow: React.FC<SongRowProps> = ({
   queueContext,
   isInitiallyLiked = false,
   onAddToPlaylist,
+  hideAlbum = false,
 }) => {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const { isAuthenticated } = useAuthStore();
+  const { openModal: openPlaylistModal } = usePlaylistModalStore();
   const [isLiked, setIsLiked] = useState(isInitiallyLiked);
   const [isLiking, setIsLiking] = useState(false);
 
   const isCurrent = currentTrack?.id === track.id;
   const playCount = getTrackPlayCount(track);
+  const displayTitle = cleanDisplayTitle(track.title);
 
   const handleRowClick = () => {
     if (isCurrent) {
@@ -53,6 +64,15 @@ export const SongRow: React.FC<SongRowProps> = ({
       console.error(err);
     } finally {
       setIsLiking(false);
+    }
+  };
+
+  const handleAddToPlaylistClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onAddToPlaylist) {
+      onAddToPlaylist(track);
+    } else {
+      openPlaylistModal(track);
     }
   };
 
@@ -86,8 +106,11 @@ export const SongRow: React.FC<SongRowProps> = ({
         {/* Thumbnail */}
         <div className="w-10 h-10 rounded-md overflow-hidden bg-surface-soft shrink-0 border border-hairline dark:border-hairline-dark">
           <img
-            src={track.coverUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100&auto=format&fit=crop&q=80'}
-            alt={track.title}
+            src={
+              track.coverUrl ||
+              'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100&auto=format&fit=crop&q=80'
+            }
+            alt={displayTitle}
             className="w-full h-full object-cover"
             loading="lazy"
           />
@@ -99,8 +122,9 @@ export const SongRow: React.FC<SongRowProps> = ({
             className={`text-sm font-medium truncate ${
               isCurrent ? 'text-black dark:text-white font-semibold' : 'text-neutral-900 dark:text-white'
             }`}
+            title={track.title}
           >
-            {track.title}
+            {displayTitle}
           </span>
           <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate flex items-center gap-1.5">
             <span>{formatArtists(track.artists)}</span>
@@ -111,10 +135,12 @@ export const SongRow: React.FC<SongRowProps> = ({
         </div>
       </div>
 
-      {/* Middle 1: Album Name (Desktop) */}
-      <div className="hidden md:block w-1/4 text-xs text-neutral-500 dark:text-neutral-400 truncate px-2">
-        {track.album || '—'}
-      </div>
+      {/* Middle 1: Album Name (Desktop - only shown when not hideAlbum and album has value) */}
+      {!hideAlbum && track.album && track.album !== '—' && (
+        <div className="hidden md:block w-1/4 text-xs text-neutral-500 dark:text-neutral-400 truncate px-2">
+          {track.album}
+        </div>
+      )}
 
       {/* Middle 2: Play count (Desktop) */}
       <div
@@ -130,8 +156,8 @@ export const SongRow: React.FC<SongRowProps> = ({
         <SourceBadge isFullLength={track.isFullLength} source={track.source} />
       </div>
 
-      {/* Right: Like + Duration + More */}
-      <div className="flex items-center gap-3 shrink-0 pl-2">
+      {/* Right: Like + Duration + Add to Playlist */}
+      <div className="flex items-center gap-2.5 shrink-0 pl-2">
         <button
           onClick={handleToggleLike}
           disabled={isLiking}
@@ -140,6 +166,7 @@ export const SongRow: React.FC<SongRowProps> = ({
               ? 'text-red-500 fill-red-500'
               : 'text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-ink dark:hover:text-white'
           }`}
+          title={isLiked ? 'Bỏ thích' : 'Yêu thích bài hát'}
           aria-label="Thích"
         >
           <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
@@ -149,18 +176,14 @@ export const SongRow: React.FC<SongRowProps> = ({
           {track.durationMs > 0 ? formatMs(track.durationMs) : '—'}
         </span>
 
-        {onAddToPlaylist && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToPlaylist(track);
-            }}
-            className="p-1 rounded-pill text-mute opacity-0 group-hover:opacity-100 hover:text-ink dark:hover:text-white"
-            title="Thêm vào playlist"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        )}
+        <button
+          onClick={handleAddToPlaylistClick}
+          className="p-1 rounded-pill text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-black dark:hover:text-white transition-opacity active:scale-90"
+          title="Thêm vào playlist"
+          aria-label="Thêm vào playlist"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );

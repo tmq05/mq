@@ -63,3 +63,4 @@ async function updateArtists() {
 updateArtists()
   .catch(console.error)
   .finally(() => prisma.$disconnect());
+
