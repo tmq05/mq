@@ -89,3 +89,4 @@ export function getGenreColor(slug?: string): string {
   const match = GENRE_STYLES_MAP[slug.toLowerCase().trim()];
   return match?.color || '#10b981';
 }
+

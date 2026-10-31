@@ -21,13 +21,19 @@
   /* High contrast text guarantees in dark mode */
   .dark .text-ink,
   .dark .text-on-dark,
-  .dark .text-neutral-900,
-  .dark .text-neutral-800,
   .dark h1,
   .dark h2,
   .dark h3,
   .dark h4 {
     color: #ffffff !important;
+  }
+
+  /* Inverted elements (white buttons / active chips in dark mode) must have black text */
+  .dark .text-black,
+  .dark .dark\:text-black,
+  .dark .dark\:text-neutral-900,
+  .dark [data-btn-white] {
+    color: #000000 !important;
   }
 
   .dark .text-body,

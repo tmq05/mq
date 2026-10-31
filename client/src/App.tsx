@@ -28,6 +28,7 @@ import { useAuthStore } from './stores/auth-store.js';
 import { usePlayerStore } from './stores/player-store.js';
 import { Button } from './components/common/Button.js';
 import { ErrorBoundary } from './components/common/ErrorBoundary.js';
+import { ScrollToTop } from './components/common/ScrollToTop.js';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,6 +120,7 @@ export const App: React.FC = () => {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
+          <ScrollToTop />
           <AppContent />
         </BrowserRouter>
       </QueryClientProvider>

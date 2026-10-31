@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Play, ArrowLeft, Bookmark, Sparkles, Music2, Users } from 'lucide-react';
@@ -39,6 +39,10 @@ export const GenreDetailPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [slug]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['genre-detail', slug],
@@ -156,14 +160,14 @@ export const GenreDetailPage: React.FC = () => {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-3 pt-4">
-            <Button
-              size="lg"
+            <button
               onClick={handlePlayAll}
-              icon={<Play className="w-4 h-4 fill-current ml-0.5" />}
-              className="bg-white text-neutral-900 hover:bg-neutral-100 shadow-lg font-bold border-none"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-pill shadow-lg font-bold transition-all active:scale-95 cursor-pointer text-sm"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
             >
-              Phát tất cả
-            </Button>
+              <Play className="w-4 h-4 fill-black text-black ml-0.5" />
+              <span className="font-bold" style={{ color: '#000000' }}>Phát tất cả</span>
+            </button>
 
             <button
               onClick={() => setIsSaved(!isSaved)}
@@ -252,9 +256,9 @@ export const GenreDetailPage: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as FilterTab)}
-                className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all whitespace-nowrap ${
+                className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === tab.id
-                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-semibold shadow-sm'
+                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-black font-semibold shadow-sm'
                     : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
                 }`}
               >

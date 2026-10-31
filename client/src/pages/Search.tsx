@@ -109,9 +109,9 @@ export const SearchPage: React.FC = () => {
                 setActiveSource(s.id);
                 if (s.id === 'youtube') setIncludeYouTube(true);
               }}
-              className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all ${
+              className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all cursor-pointer ${
                 activeSource === s.id
-                  ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-semibold shadow-sm'
+                  ? 'bg-neutral-900 dark:bg-white text-white dark:text-black font-semibold shadow-sm'
                   : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
               }`}
             >
