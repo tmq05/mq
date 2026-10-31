@@ -37,7 +37,8 @@ const envSchema = z.object({
   YOUTUBE_ENABLED: z.coerce.boolean().default(true),
   YOUTUBE_API_KEY: z.string().optional().default(''),
 
-  DEEZER_ENABLED: z.coerce.boolean().default(true),
+  DEEZER_ENABLED: z.coerce.boolean().default(false),
+  LOCAL_ENABLED: z.coerce.boolean().default(false),
   ITUNES_ENABLED: z.coerce.boolean().default(true),
 
   SPOTIFY_ENABLED: z.coerce.boolean().default(false),

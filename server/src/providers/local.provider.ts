@@ -14,7 +14,7 @@ import { resolveExactFullTrack } from '../utils/track-resolver.js';
 
 export class LocalProvider implements MusicProvider {
   readonly name: MusicSource = 'local';
-  readonly isEnabled = true;
+  readonly isEnabled = false;
 
   private mapSong(song: any): UnifiedTrack {
     return {

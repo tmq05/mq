@@ -40,8 +40,8 @@ export const CreditsPage: React.FC = () => {
     },
     {
       name: 'Deezer',
-      badge: 'Metadata & 30s Preview',
-      desc: 'Cung cấp siêu dữ liệu bài hát, ảnh bìa album độ phân giải cao và đoạn nghe thử 30 giây phục vụ khám phá âm nhạc qua Deezer Public API.',
+      badge: 'Đã ngưng phát',
+      desc: 'Nguồn Deezer đã được tạm ngưng theo cấu hình hệ thống.',
       link: 'https://developers.deezer.com',
       license: 'Deezer Developer API Terms',
     },

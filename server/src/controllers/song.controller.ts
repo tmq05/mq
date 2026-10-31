@@ -8,6 +8,7 @@ import { streamAudioFile, pipeRemoteAudio } from '../utils/range-stream.js';
 import { env } from '../config/env.js';
 import { spotifyProvider } from '../providers/spotify.provider.js';
 import { zingMp3Provider } from '../providers/zingmp3.provider.js';
+import { searchService } from '../services/search.service.js';
 
 export class SongController {
   async getSong(req: Request, res: Response, next: NextFunction) {
@@ -214,33 +215,26 @@ export class SongController {
 
   async getTrending(req: Request, res: Response, next: NextFunction) {
     try {
-      // 10 top local songs
-      const localSongs = await prisma.song.findMany({
-        where: { source: 'local' },
-        orderBy: { playCount: 'desc' },
-        take: 12,
-        include: { artist: true },
-      });
+      // Fetch genuine hits from Spotify and Zing MP3 (no local, no deezer)
+      const [spotifyRes, zingRes] = await Promise.allSettled([
+        spotifyProvider.search('Top Hits Vietnam', 'track'),
+        zingMp3Provider.search('thịnh hành', 'track'),
+      ]);
 
-      const formatted = localSongs.map((s) => ({
-        id: `local:${s.id}`,
-        dbId: s.id,
-        source: s.source,
-        sourceId: s.sourceId,
-        title: s.title,
-        artists: s.artists,
-        album: s.album,
-        coverUrl: s.coverUrl,
-        durationMs: s.durationMs,
-        playbackType: s.playbackType,
-        streamUrl: s.streamUrl || `/api/songs/${s.id}/stream`,
-        embedId: s.embedId,
-        previewUrl: s.previewUrl,
-        isFullLength: s.isFullLength,
-        playCount: s.playCount,
-      }));
+      const candidates: any[] = [];
+      if (spotifyRes.status === 'fulfilled' && spotifyRes.value.tracks.length > 0) {
+        candidates.push(...spotifyRes.value.tracks);
+      }
+      if (zingRes.status === 'fulfilled' && zingRes.value.tracks.length > 0) {
+        candidates.push(...zingRes.value.tracks);
+      }
 
-      res.json({ trending: formatted });
+      const deduplicated = searchService
+        .deduplicateTracks(candidates)
+        .filter((t) => t.source !== 'local' && t.source !== 'deezer')
+        .slice(0, 12);
+
+      res.json({ trending: deduplicated });
     } catch (err) {
       next(err);
     }
@@ -248,31 +242,26 @@ export class SongController {
 
   async getVietnameseHits(req: Request, res: Response, next: NextFunction) {
     try {
-      const songs = await prisma.song.findMany({
-        where: {
-          source: 'local',
-        },
-        take: 10,
-        orderBy: { createdAt: 'desc' },
-        include: { artist: true },
-      });
+      // Fetch genuine Vietnamese hits from Spotify and Zing MP3
+      const [spotifyRes, zingRes] = await Promise.allSettled([
+        spotifyProvider.search('hit nhạc việt', 'track'),
+        zingMp3Provider.search('Sơn Tùng', 'track'),
+      ]);
 
-      const formatted = songs.map((s) => ({
-        id: `local:${s.id}`,
-        dbId: s.id,
-        source: s.source,
-        sourceId: s.sourceId,
-        title: s.title,
-        artists: s.artists,
-        album: s.album,
-        coverUrl: s.coverUrl,
-        durationMs: s.durationMs,
-        playbackType: s.playbackType,
-        streamUrl: s.streamUrl || `/api/songs/${s.id}/stream`,
-        isFullLength: s.isFullLength,
-      }));
+      const candidates: any[] = [];
+      if (spotifyRes.status === 'fulfilled' && spotifyRes.value.tracks.length > 0) {
+        candidates.push(...spotifyRes.value.tracks);
+      }
+      if (zingRes.status === 'fulfilled' && zingRes.value.tracks.length > 0) {
+        candidates.push(...zingRes.value.tracks);
+      }
 
-      res.json({ vpop: formatted });
+      const deduplicated = searchService
+        .deduplicateTracks(candidates)
+        .filter((t) => t.source !== 'local' && t.source !== 'deezer')
+        .slice(0, 10);
+
+      res.json({ vpop: deduplicated });
     } catch (err) {
       next(err);
     }

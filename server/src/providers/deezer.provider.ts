@@ -17,7 +17,7 @@ export class DeezerProvider implements MusicProvider {
   private baseUrl = 'https://api.deezer.com';
 
   get isEnabled(): boolean {
-    return env.DEEZER_ENABLED;
+    return false;
   }
 
   private mapTrack(item: any): UnifiedTrack {

@@ -73,14 +73,12 @@ export const SearchPage: React.FC = () => {
 
   const sourcesList = [
     { id: 'all', label: 'Tất cả nguồn' },
-    { id: 'local', label: 'mq Local' },
+    { id: 'spotify', label: 'Spotify' },
     { id: 'zingmp3', label: 'Zing MP3' },
+    { id: 'youtube', label: 'YouTube' },
     { id: 'audius', label: 'Audius' },
     { id: 'jamendo', label: 'Jamendo' },
-    { id: 'spotify', label: 'Spotify' },
-    { id: 'deezer', label: 'Deezer' },
     { id: 'itunes', label: 'Apple Music' },
-    { id: 'youtube', label: 'YouTube' },
   ];
 
   return (

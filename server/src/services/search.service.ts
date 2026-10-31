@@ -104,6 +104,9 @@ export class SearchService {
     // 2. Select providers
     let activeProviders = providerRegistry.getActiveProviders(sources);
 
+    // Filter out disabled sources (local and deezer per user requirement)
+    activeProviders = activeProviders.filter((p) => p.name !== 'local' && p.name !== 'deezer');
+
     // YouTube quota protection: only call YouTube if explicit in sources or includeYouTube=true
     if (!includeYouTube && (!sources || !sources.includes('youtube'))) {
       activeProviders = activeProviders.filter((p) => p.name !== 'youtube');
