@@ -1,0 +1,127 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "mq Music Streaming API",
+    "version": "1.0.0",
+    "description": "Production-ready REST API for mq music streaming platform inspired by Spotify and Zing MP3"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Đăng ký tài khoản mới",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "name"],
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" },
+                  "name": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Tạo tài khoản thành công" },
+          "400": { "description": "Dữ liệu không hợp lệ" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Đăng nhập",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Đăng nhập thành công" },
+          "401": { "description": "Sai tài khoản hoặc mật khẩu" }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "summary": "Tìm kiếm tổng hợp từ tất cả nguồn nhạc",
+        "tags": ["Search"],
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["track", "artist", "album", "playlist", "all"] } },
+          { "name": "sources", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "includeYouTube", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "Kết quả tìm kiếm tổng hợp" }
+        }
+      }
+    },
+    "/songs/trending": {
+      "get": {
+        "summary": "Danh sách bài hát thịnh hành",
+        "tags": ["Songs"],
+        "responses": {
+          "200": { "description": "Thành công" }
+        }
+      }
+    },
+    "/songs/{id}/stream": {
+      "get": {
+        "summary": "Phát trực tiếp tệp âm thanh qua HTTP Range Request (206 Partial Content)",
+        "tags": ["Songs"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "206": { "description": "Partial audio content stream" },
+          "200": { "description": "Full audio stream" }
+        }
+      }
+    },
+    "/lyrics": {
+      "get": {
+        "summary": "Lấy lời bài hát đồng bộ LRC (LRCLIB)",
+        "tags": ["Lyrics"],
+        "parameters": [
+          { "name": "title", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "artist", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Lời bài hát LRC" }
+        }
+      }
+    }
+  }
+}
