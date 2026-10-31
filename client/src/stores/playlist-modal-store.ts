@@ -14,3 +14,4 @@ export const usePlaylistModalStore = create<PlaylistModalStore>((set) => ({
   openModal: (track) => set({ isOpen: true, selectedTrack: track }),
   closeModal: () => set({ isOpen: false, selectedTrack: null }),
 }));
+

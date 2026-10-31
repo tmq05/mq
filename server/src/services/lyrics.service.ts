@@ -4,6 +4,7 @@ import { env } from '../config/env.js';
 import { prisma } from '../config/prisma.js';
 import { logger } from '../config/logger.js';
 import { findCuratedLyrics } from '../utils/synced-lyrics-db.js';
+import { removeAccents } from '../utils/unaccent.js';
 
 export interface LyricsResponse {
   syncedLyrics?: string;
@@ -40,36 +41,82 @@ function cleanArtistForLyrics(raw: string): string {
   return artist.trim();
 }
 
+function cleanLrcLines(rawLrc: string): string {
+  const lines = rawLrc.split('\n');
+  const cleaned: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Remove metadata tags like [ar: ...], [ti: ...], [length: ...], [id: ...]
+    if (/^\[(ar|ti|al|by|length|id|offset|re|ve):/i.test(trimmed)) continue;
+
+    // Check text after timestamp tag
+    const text = trimmed.replace(/\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]/g, '').trim();
+    if (!text) continue;
+
+    // Filter out song meta header lines like "Bài hát: ...", "Ca sĩ: ..."
+    if (/^(bài hát|ca sĩ|nhạc sĩ|sáng tác|album|lời bài hát|beat|producer|mv|official):/i.test(text)) {
+      continue;
+    }
+
+    cleaned.push(trimmed);
+  }
+
+  return cleaned.join('\n');
+}
+
 async function fetchZingLyrics(title: string, artist: string): Promise<string | null> {
   try {
     const ZingPkg: any = await import('zingmp3-api-full');
     const ZingMp3 = ZingPkg.ZingMp3 || ZingPkg.default?.ZingMp3;
     if (!ZingMp3) return null;
 
+    const normTitle = removeAccents(title).toLowerCase();
     const query = `${title} ${artist}`.trim();
-    const searchRes = await ZingMp3.search(query);
-    const songs = searchRes?.data?.songs;
-    if (!Array.isArray(songs) || songs.length === 0) return null;
 
-    const song = songs[0];
-    if (!song?.encodeId) return null;
+    // 1. Try search with title and artist
+    let searchRes = await ZingMp3.search(query);
+    let songs = searchRes?.data?.songs || [];
 
-    const lyricRes = await ZingMp3.getLyric(song.encodeId);
+    // Find song matching title
+    let match = songs.find((s: any) => {
+      const sNorm = removeAccents(s.title || '').toLowerCase();
+      return sNorm.includes(normTitle) || normTitle.includes(sNorm);
+    });
+
+    // 2. If no title match with artist, search by title alone
+    if (!match) {
+      searchRes = await ZingMp3.search(title);
+      songs = searchRes?.data?.songs || [];
+      match = songs.find((s: any) => {
+        const sNorm = removeAccents(s.title || '').toLowerCase();
+        return sNorm.includes(normTitle) || normTitle.includes(sNorm);
+      }) || songs[0];
+    }
+
+    if (!match?.encodeId) return null;
+
+    const lyricRes = await ZingMp3.getLyric(match.encodeId);
     if (lyricRes?.err !== 0 || !lyricRes?.data) return null;
 
-    // 1. If static .lrc file is provided by Zing CDN
+    // A. If static .lrc file is provided by Zing CDN
     if (lyricRes.data.file) {
       try {
         const lrcRes = await axios.get(lyricRes.data.file, { timeout: 3500 });
         if (typeof lrcRes.data === 'string' && lrcRes.data.includes('[')) {
-          return lrcRes.data;
+          const cleaned = cleanLrcLines(lrcRes.data);
+          if (cleaned.length > 0) {
+            return cleaned;
+          }
         }
       } catch {
-        // Fallback to sentences below
+        // Fallback to sentences
       }
     }
 
-    // 2. Convert sentence timestamps to LRC format
+    // B. Convert sentence word timestamps to LRC format
     if (Array.isArray(lyricRes.data.sentences) && lyricRes.data.sentences.length > 0) {
       const lrcLines: string[] = [];
       for (const sent of lyricRes.data.sentences) {
@@ -80,7 +127,7 @@ async function fetchZingLyrics(title: string, artist: string): Promise<string | 
           const millis = Math.floor((startMs % 1000) / 10);
           const timeTag = `[${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${millis.toString().padStart(2, '0')}]`;
           const text = sent.words.map((w: any) => w.data).join(' ').trim();
-          if (text) {
+          if (text && !/^(bài hát|ca sĩ|nhạc sĩ|sáng tác|album|lời|beat|producer):/i.test(text)) {
             lrcLines.push(`${timeTag}${text}`);
           }
         }
@@ -105,33 +152,7 @@ export class LyricsService {
     const cleanTitle = cleanTitleForLyrics(title) || title.trim();
     const cleanArtist = cleanArtistForLyrics(artist) || artist.trim();
 
-    // 1. Check local DB if songId provided
-    if (songId) {
-      const cleanId = songId.replace(/^local:/, '');
-      const localSong = await prisma.song.findFirst({
-        where: { OR: [{ id: cleanId }, { sourceId: cleanId }] },
-        select: { lyrics: true },
-      });
-      if (localSong?.lyrics) {
-        const isSynced = localSong.lyrics.includes('[0');
-        return {
-          syncedLyrics: isSynced ? localSong.lyrics : undefined,
-          plainLyrics: isSynced ? undefined : localSong.lyrics,
-          source: 'local',
-        };
-      }
-    }
-
-    // 2. Check Curated Synced Lyrics Library (Immediate high-precision sync)
-    const curatedLrc = findCuratedLyrics(cleanTitle, cleanArtist);
-    if (curatedLrc) {
-      return {
-        syncedLyrics: curatedLrc,
-        source: 'curated',
-      };
-    }
-
-    // 3. Try Zing MP3 official LRC (exact millisecond-precision timestamps matching intros)
+    // 1. Try Zing MP3 official studio LRC (Highest precision, matched to authentic track)
     const zingLrc = await fetchZingLyrics(cleanTitle, cleanArtist);
     if (zingLrc) {
       return {
@@ -140,7 +161,7 @@ export class LyricsService {
       };
     }
 
-    // 4. Check Cache
+    // 2. Check Memory/Redis Cache
     const cacheKey = `lyrics:${cleanArtist.toLowerCase()}:${cleanTitle.toLowerCase()}`;
     const cached = await cache.get(cacheKey);
     if (cached) {
@@ -154,7 +175,16 @@ export class LyricsService {
       }
     }
 
-    // 5. Try lyrics.ovh API (Fast public lyrics library)
+    // 3. Check Curated Synced Lyrics Library
+    const curatedLrc = findCuratedLyrics(cleanTitle, cleanArtist);
+    if (curatedLrc) {
+      return {
+        syncedLyrics: curatedLrc,
+        source: 'curated',
+      };
+    }
+
+    // 4. Try lyrics.ovh API (Fast public lyrics library)
     try {
       const ovhRes = await axios.get(
         `https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`,
@@ -172,8 +202,8 @@ export class LyricsService {
       // lyrics.ovh didn't match, continue to LRCLIB
     }
 
+    // 5. Try LRCLIB API if enabled
     if (env.LRCLIB_ENABLED) {
-      // 6. Try LRCLIB API
       try {
         const durationSeconds = durationMs ? Math.round(durationMs / 1000) : undefined;
         const res = await axios.get('https://lrclib.net/api/get', {
@@ -190,7 +220,7 @@ export class LyricsService {
 
         if (res.data?.syncedLyrics || res.data?.plainLyrics) {
           const data: LyricsResponse = {
-            syncedLyrics: res.data.syncedLyrics || undefined,
+            syncedLyrics: res.data.syncedLyrics ? cleanLrcLines(res.data.syncedLyrics) : undefined,
             plainLyrics: res.data.plainLyrics || undefined,
             source: 'lrclib',
           };
@@ -198,7 +228,7 @@ export class LyricsService {
           return data;
         }
       } catch {
-        // Fallback search
+        // Search fallback on LRCLIB
         try {
           const searchRes = await axios.get('https://lrclib.net/api/search', {
             params: { q: `${cleanTitle} ${cleanArtist}` },
@@ -212,7 +242,9 @@ export class LyricsService {
             const matchWithSynced =
               searchRes.data.find((item: any) => Boolean(item.syncedLyrics)) || searchRes.data[0];
             const data: LyricsResponse = {
-              syncedLyrics: matchWithSynced.syncedLyrics || undefined,
+              syncedLyrics: matchWithSynced.syncedLyrics
+                ? cleanLrcLines(matchWithSynced.syncedLyrics)
+                : undefined,
               plainLyrics: matchWithSynced.plainLyrics || undefined,
               source: 'lrclib',
             };
@@ -222,6 +254,23 @@ export class LyricsService {
         } catch {
           // ignore
         }
+      }
+    }
+
+    // 6. Check local DB if songId provided
+    if (songId) {
+      const cleanId = songId.replace(/^local:/, '');
+      const localSong = await prisma.song.findFirst({
+        where: { OR: [{ id: cleanId }, { sourceId: cleanId }] },
+        select: { lyrics: true },
+      });
+      if (localSong?.lyrics) {
+        const isSynced = localSong.lyrics.includes('[0');
+        return {
+          syncedLyrics: isSynced ? cleanLrcLines(localSong.lyrics) : undefined,
+          plainLyrics: isSynced ? undefined : localSong.lyrics,
+          source: 'local',
+        };
       }
     }
 

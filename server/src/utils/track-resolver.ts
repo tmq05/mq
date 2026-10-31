@@ -1,15 +1,16 @@
 import axios from 'axios';
 import { logger } from '../config/logger.js';
 
-// Pre-indexed known exact official YouTube video IDs for instant 0ms lookup
+// Pre-indexed known exact official YouTube clean audio video IDs for instant 0ms lookup
 const KNOWN_EXACT_TRACKS: Record<string, string> = {
   // Sơn Tùng M-TP
   'nhu ngay hom qua son tung m tp': 'YtkgtlfKaxM',
+  'noi nay co anh son tung m tp': 'FN7ALfpGxiI',
   'chung ta cua hien tai son tung m tp': 'Z8pMSslQpKM',
   'lac troi son tung m tp': 'Llw9Q6akRo4',
   'co chac yeu la day son tung m tp': '6t-MjBazs3o',
   'hay trao cho anh son tung m tp': 'knW7-x7Y7RE',
-  'am tham ben em son tung m tp': '30KI5SuECuc',
+  'am tham ben em son tung m tp': '3fNbfdACbzE',
   'chay ngay di son tung m tp': '32sYGCOYJUM',
   'dung ve tre con son tung m tp': 'L8l_D18sYj0',
 
@@ -29,12 +30,9 @@ const KNOWN_EXACT_TRACKS: Record<string, string> = {
   'nhung loi hua bo quen vu': 'h6RONxjPBf4',
   'dong ki uc vu': '61mGk6yK9_U',
 
-  // Bích Phương
-  'bua yeu bich phuong': 'FkOt19CUC30',
-  'di du dua di bich phuong': 'ZF3b1nK-TjM',
-  'mot cu lua bich phuong': 'gVlYxmdbYqM',
-  'nang chen tieu sau bich phuong': 'sU8G7Q4rUA4',
-  'bao gio lay chong bich phuong': '7p3h1Yd4-YQ',
+  // W/N
+  '2 4 w n': 'DuzuhELUZw8',
+  '3107 w n': '9BFrP8kR9a4',
 
   // HIEUTHUHAI
   'ngu mot minh hieuthuhai': '1OJQdxT6WHE',
@@ -44,12 +42,22 @@ const KNOWN_EXACT_TRACKS: Record<string, string> = {
   'hen gap em duoi anh trang hieuthuhai': 'Zl97G-eD9j0',
 
   // Hoàng Dũng
-  'nang tho hoang dung': 'Zzn9-ATB9aU',
+  'nang tho hoang dung': '0SJAzTGh1SE',
   'yeu duoi hoang dung': '7JkM3t8g-m4',
   'doi muoi hoang dung': '7C2zLQSZ98A',
-  'nepe hoang dung': '7k-j76921gQ',
+
+  // Bích Phương
+  'bua yeu bich phuong': 'FkOt19CUC30',
+  'di du dua di bich phuong': 'ZF3b1nK-TjM',
+  'mot cu lua bich phuong': 'gVlYxmdbYqM',
+  'nang chen tieu sau bich phuong': 'sU8G7Q4rUA4',
+  'bao gio lay chong bich phuong': '7p3h1Yd4-YQ',
 
   // Other Vietnamese Hits
+  'cham hoa mono': 'WCm2elbTEZQ',
+  'vung an toan b ray': '_XX248bq6Pw',
+  'cuoi chieu haisam': 'WfJC8yrsdnA',
+  'lanh thoi dung mua haisam': 'pYmAgBSq_Ug',
   'bao tien mot mo binh yen 14 casper': 'b_d65e2qXlY',
   'huong mua he vu': '7gKkWpU-v78',
   'tung la vu cat tuong': 'u24-7w_lK5g',
@@ -76,8 +84,8 @@ function normalizeKey(str: string): string {
 
 /**
  * Resolve the exact full-length official YouTube video ID for any track title & artist.
- * 1. Checks memory cache of known hits for instant 0ms response.
- * 2. Uses YouTube search with official music filters to extract the exact full-length video ID.
+ * 1. Checks memory cache of known clean audio tracks for instant 0ms response.
+ * 2. Uses YouTube search with Official Audio constraint.
  */
 export async function resolveExactFullTrack(
   title: string,
@@ -99,7 +107,7 @@ export async function resolveExactFullTrack(
     }
   }
 
-  // 2. Query YouTube search with Official Audio / MV constraint
+  // 2. Query YouTube search with Official Audio constraint
   try {
     const searchQuery = `${title} ${artist} Official Audio`.trim();
     const res = await axios.get(
@@ -130,4 +138,3 @@ export async function resolveExactFullTrack(
 
   return null;
 }
-

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Mic2, AlertCircle, RotateCcw, Zap } from 'lucide-react';
+import { X, Mic2, AlertCircle } from 'lucide-react';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { api } from '../../api/client.js';
 import { LyricsLine } from '../../types/index.js';
@@ -11,33 +11,11 @@ export const LyricsDrawer: React.FC = () => {
   const [plainLyrics, setPlainLyrics] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [manualOffsetMs, setManualOffsetMs] = useState(0);
 
   const activeLineRef = useRef<HTMLParagraphElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Load saved offset from localStorage on track change
-  useEffect(() => {
-    if (!currentTrack?.id) {
-      setManualOffsetMs(0);
-      return;
-    }
-    const saved = localStorage.getItem(`lyrics_offset_${currentTrack.id}`);
-    if (saved) {
-      setManualOffsetMs(parseInt(saved, 10) || 0);
-    } else {
-      setManualOffsetMs(0);
-    }
-  }, [currentTrack?.id]);
-
-  const updateOffset = (newOffset: number) => {
-    setManualOffsetMs(newOffset);
-    if (currentTrack?.id) {
-      localStorage.setItem(`lyrics_offset_${currentTrack.id}`, String(newOffset));
-    }
-  };
-
-  // Enhanced LRC Parser: supports [offset: ms], [mm:ss.xx], [mm:ss:xx], and multiple tags
+  // Enhanced LRC Parser with metadata filtering
   function parseLrc(lrcText: string): LyricsLine[] {
     const lines = lrcText.split('\n');
     const result: LyricsLine[] = [];
@@ -48,22 +26,31 @@ export const LyricsDrawer: React.FC = () => {
     const timeRegex = /\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
 
     for (const rawLine of lines) {
+      // Skip ID3 tags
+      if (/^\[(ar|ti|al|by|length|id|offset|re|ve):/i.test(rawLine.trim())) continue;
+
       const matches = Array.from(rawLine.matchAll(timeRegex));
       if (matches.length > 0) {
         const text = rawLine.replace(timeRegex, '').trim();
-        if (text) {
-          for (const match of matches) {
-            const minutes = parseInt(match[1], 10);
-            const seconds = parseInt(match[2], 10);
-            let millis = 0;
-            if (match[3]) {
-              if (match[3].length === 1) millis = parseInt(match[3], 10) * 100;
-              else if (match[3].length === 2) millis = parseInt(match[3], 10) * 10;
-              else millis = parseInt(match[3].slice(0, 3), 10);
-            }
-            const timeMs = minutes * 60 * 1000 + seconds * 1000 + millis + globalOffset;
-            result.push({ timeMs, text });
+        // Skip metadata header lines
+        if (
+          !text ||
+          /^(bài hát|ca sĩ|nhạc sĩ|sáng tác|album|lời bài hát|beat|producer|mv|official):/i.test(text)
+        ) {
+          continue;
+        }
+
+        for (const match of matches) {
+          const minutes = parseInt(match[1], 10);
+          const seconds = parseInt(match[2], 10);
+          let millis = 0;
+          if (match[3]) {
+            if (match[3].length === 1) millis = parseInt(match[3], 10) * 100;
+            else if (match[3].length === 2) millis = parseInt(match[3], 10) * 10;
+            else millis = parseInt(match[3].slice(0, 3), 10);
           }
+          const timeMs = minutes * 60 * 1000 + seconds * 1000 + millis + globalOffset;
+          result.push({ timeMs, text });
         }
       }
     }
@@ -72,7 +59,7 @@ export const LyricsDrawer: React.FC = () => {
   }
 
   // Auto-sync plain lyrics if no LRC timestamps exist
-  function autoSyncPlainLyrics(plainText: string, durationMs: number, introDelayMs = 4000): LyricsLine[] {
+  function autoSyncPlainLyrics(plainText: string, durationMs: number): LyricsLine[] {
     const rawLines = plainText
       .split('\n')
       .map((l) => l.trim())
@@ -81,7 +68,7 @@ export const LyricsDrawer: React.FC = () => {
     if (rawLines.length === 0) return [];
 
     const total = rawLines.length;
-    const startMs = introDelayMs;
+    const startMs = 4000;
     const endMs = Math.max(startMs + 30000, durationMs - 12000);
     const step = (endMs - startMs) / Math.max(1, total - 1);
 
@@ -122,7 +109,7 @@ export const LyricsDrawer: React.FC = () => {
           setPlainLyrics(null);
         } else if (res.data?.plainLyrics) {
           const duration = currentTrack.durationMs > 0 ? currentTrack.durationMs : 210000;
-          const autoSynced = autoSyncPlainLyrics(res.data.plainLyrics, duration, 4000);
+          const autoSynced = autoSyncPlainLyrics(res.data.plainLyrics, duration);
           setSyncedLines(autoSynced);
           setPlainLyrics(res.data.plainLyrics);
         } else {
@@ -142,12 +129,11 @@ export const LyricsDrawer: React.FC = () => {
     };
   }, [currentTrack?.id, isLyricsOpen]);
 
-  // Find active line index using current time & manual offset
-  const effectiveCurrentMs = currentTime * 1000 - manualOffsetMs;
+  // Compute active line index using current playback time with human reading lead compensation (~150ms)
+  const currentMs = currentTime * 1000;
   let activeIndex = -1;
   for (let i = 0; i < syncedLines.length; i++) {
-    // Lead time compensation for natural lyric reading (~250ms)
-    if (syncedLines[i].timeMs <= effectiveCurrentMs + 250) {
+    if (syncedLines[i].timeMs <= currentMs + 150) {
       activeIndex = i;
     } else {
       break;
@@ -164,15 +150,6 @@ export const LyricsDrawer: React.FC = () => {
     }
   }, [activeIndex]);
 
-  // Instant Sync: Match selected line or first line to current playback time
-  const handleSyncCurrentLineToMusic = (lineIndex: number) => {
-    if (!syncedLines[lineIndex]) return;
-    const lineTime = syncedLines[lineIndex].timeMs;
-    // Difference between audio time and line time becomes new manual offset
-    const newOffset = Math.round(currentTime * 1000 - lineTime);
-    updateOffset(newOffset);
-  };
-
   if (!isLyricsOpen) {
     return null;
   }
@@ -180,7 +157,7 @@ export const LyricsDrawer: React.FC = () => {
   return (
     <div className="fixed inset-0 top-14 bottom-24 z-30 bg-canvas/98 dark:bg-canvas-dark/98 backdrop-blur-xl flex flex-col p-6 max-w-4xl mx-auto rounded-t-2xl border-t border-hairline dark:border-hairline-dark select-none animate-in fade-in slide-in-from-bottom-6 duration-200">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-hairline dark:border-hairline-dark shrink-0">
+      <div className="flex items-center justify-between pb-4 border-b border-hairline dark:border-hairline-dark shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <Mic2 className="w-5 h-5 text-traffic-green shrink-0" />
           <div className="min-w-0">
@@ -193,61 +170,13 @@ export const LyricsDrawer: React.FC = () => {
           </div>
         </div>
 
-        {/* Sync Controls & Close */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {syncedLines.length > 0 && (
-            <>
-              {/* Quick Sync to Current Moment Button */}
-              <button
-                onClick={() => handleSyncCurrentLineToMusic(Math.max(0, activeIndex))}
-                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-pill bg-traffic-green/10 hover:bg-traffic-green/20 border border-traffic-green/30 text-traffic-green text-xs font-semibold active:scale-95 transition-all"
-                title="Khớp câu đang hát với nhạc tại giây này"
-              >
-                <Zap className="w-3 h-3 fill-current" />
-                <span>Khớp với nhạc</span>
-              </button>
-
-              <div className="flex items-center gap-1 bg-surface-soft dark:bg-surface-dark-soft px-2.5 py-1 rounded-pill border border-hairline dark:border-hairline-dark text-xs font-mono">
-                <button
-                  onClick={() => updateOffset(manualOffsetMs - 500)}
-                  className="px-1.5 py-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 active:scale-95 transition-transform"
-                  title="Lùi lời 0.5s"
-                >
-                  -0.5s
-                </button>
-                <button
-                  onClick={() => updateOffset(0)}
-                  className={`px-1.5 py-0.5 rounded text-[11px] flex items-center gap-1 ${
-                    manualOffsetMs === 0
-                      ? 'text-neutral-500'
-                      : 'bg-traffic-green/20 text-traffic-green font-bold'
-                  }`}
-                  title="Đặt lại độ trễ ban đầu"
-                >
-                  {manualOffsetMs !== 0 && <RotateCcw className="w-2.5 h-2.5" />}
-                  {manualOffsetMs === 0
-                    ? 'Chuẩn'
-                    : `${manualOffsetMs > 0 ? '+' : ''}${(manualOffsetMs / 1000).toFixed(1)}s`}
-                </button>
-                <button
-                  onClick={() => updateOffset(manualOffsetMs + 500)}
-                  className="px-1.5 py-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 active:scale-95 transition-transform"
-                  title="Tiến lời 0.5s"
-                >
-                  +0.5s
-                </button>
-              </div>
-            </>
-          )}
-
-          <button
-            onClick={toggleLyrics}
-            className="p-2 rounded-pill hover:bg-surface-soft dark:hover:bg-surface-dark-soft text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
-            title="Đóng (Phím L)"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        <button
+          onClick={toggleLyrics}
+          className="p-2 rounded-pill hover:bg-surface-soft dark:hover:bg-surface-dark-soft text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
+          title="Đóng (Phím L)"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Content Area */}
@@ -281,6 +210,19 @@ export const LyricsDrawer: React.FC = () => {
           </div>
         )}
 
+        {/* Instrumental Intro Countdown Badge */}
+        {!isLoading && activeIndex === -1 && syncedLines.length > 0 && (
+          <div className="py-6 flex flex-col items-center justify-center animate-in fade-in duration-300">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-traffic-green/10 border border-traffic-green/20 text-traffic-green text-xs font-mono font-medium">
+              <span className="w-2 h-2 rounded-full bg-traffic-green animate-ping" />
+              <span>
+                Đoạn dạo nhạc · Lời bài hát sẽ vào sau{' '}
+                {Math.max(1, Math.ceil((syncedLines[0].timeMs - currentMs) / 1000))}s
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Synced Lyrics Rendering */}
         {!isLoading &&
           syncedLines.length > 0 &&
@@ -290,7 +232,7 @@ export const LyricsDrawer: React.FC = () => {
               <p
                 key={idx}
                 ref={isActive ? activeLineRef : null}
-                onClick={() => seekTo(Math.max(0, (line.timeMs + manualOffsetMs) / 1000))}
+                onClick={() => seekTo(line.timeMs / 1000)}
                 title="Nhấn để phát đoạn này"
                 className={`transition-all duration-300 font-display cursor-pointer py-2 px-4 rounded-xl max-w-2xl mx-auto select-none ${
                   isActive
