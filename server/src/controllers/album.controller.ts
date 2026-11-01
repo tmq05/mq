@@ -103,23 +103,23 @@ export class AlbumController {
 
       if (catalogAlbum) {
         const formattedTracks = catalogAlbum.tracks.map((t, idx) => {
-          const trackId = t.id || `${catalogAlbum.id}-${idx + 1}`;
-          const has11CharEmbed = typeof t.embedId === 'string' && t.embedId.length === 11;
-          const effectivePlaybackType = has11CharEmbed ? 'youtube' : (t.playbackType || 'audio');
+          const rawId = t.id || `${catalogAlbum.id}-${idx + 1}`;
+          const spotifyId = t.sourceId || t.embedId || rawId;
+          const trackId = rawId.startsWith('spotify:') ? rawId : `spotify:${rawId}`;
 
           return {
             id: trackId,
-            source: t.source || (has11CharEmbed ? 'youtube' : 'spotify'),
-            sourceId: t.sourceId || t.embedId || `${catalogAlbum.id}-${idx + 1}`,
+            source: 'spotify' as const,
+            sourceId: spotifyId,
             title: t.title || '',
             artists: t.artists || [catalogAlbum.artist],
             album: catalogAlbum.title,
             coverUrl: t.coverUrl || catalogAlbum.coverUrl,
             durationMs: t.durationMs || 220000,
-            playbackType: effectivePlaybackType,
-            streamUrl: t.streamUrl || `/api/songs/${trackId}/stream`,
-            embedId: has11CharEmbed ? t.embedId : undefined,
-            previewUrl: t.previewUrl || t.streamUrl || `/api/songs/${trackId}/stream`,
+            playbackType: 'spotify' as const,
+            streamUrl: `/api/songs/spotify:${spotifyId}/stream`,
+            embedId: spotifyId,
+            previewUrl: `/api/songs/spotify:${spotifyId}/stream`,
             isFullLength: true,
           };
         });

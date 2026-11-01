@@ -36,14 +36,32 @@ export class PlayerEngine {
   }
 
   async loadTrack(track: UnifiedTrack, autoPlay = true): Promise<void> {
+    const isSpotify = track.source === 'spotify' || track.playbackType === 'spotify';
+
+    // If track is from Spotify, play via audio stream / Spotify player - do not force to YouTube
+    if (isSpotify) {
+      if (!this.currentAdapter || this.currentAdapter.type !== 'audio') {
+        if (this.currentAdapter) {
+          this.currentAdapter.destroy();
+          this.currentAdapter = null;
+        }
+        this.currentAdapter = this.createAdapter('audio');
+      }
+
+      const store = usePlayerStore.getState();
+      this.currentAdapter.setVolume(store.isMuted ? 0 : store.volume);
+      this.updateMediaSession(track);
+      await this.currentAdapter.load(track, autoPlay);
+      return;
+    }
+
     // 1. Check if track already has an 11-char YouTube embedId for full-length playback
     let isYouTube = Boolean(
       (track.embedId && track.embedId.length === 11) ||
       (track.playbackType === 'youtube' && track.sourceId && track.sourceId.length === 11)
     );
 
-    // 2. If it does not have an 11-char YouTube ID (e.g. only 30s preview),
-    // automatically resolve the full-length YouTube video ID dynamically!
+    // 2. If it does not have an 11-char YouTube ID, resolve dynamically
     if (!isYouTube && track.title) {
       try {
         const artist = track.artists?.[0] || '';
