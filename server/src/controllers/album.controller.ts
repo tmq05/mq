@@ -103,15 +103,13 @@ export class AlbumController {
 
       if (catalogAlbum) {
         const formattedTracks = catalogAlbum.tracks.map((t, idx) => {
-          const isSpotify = t.source === 'spotify' || t.playbackType === 'spotify';
-          const isDummyEmbed = typeof t.embedId === 'string' && t.embedId.endsWith('-embed');
-          const effectivePlaybackType = isSpotify ? 'spotify' : isDummyEmbed ? 'audio' : (t.playbackType || 'youtube');
           const trackId = t.id || `${catalogAlbum.id}-${idx + 1}`;
-          const effectiveSource = isSpotify ? 'spotify' : isDummyEmbed ? 'audio' : (t.source || 'youtube');
+          const has11CharEmbed = typeof t.embedId === 'string' && t.embedId.length === 11;
+          const effectivePlaybackType = has11CharEmbed ? 'youtube' : (t.playbackType || 'audio');
 
           return {
             id: trackId,
-            source: effectiveSource,
+            source: t.source || (has11CharEmbed ? 'youtube' : 'spotify'),
             sourceId: t.sourceId || t.embedId || `${catalogAlbum.id}-${idx + 1}`,
             title: t.title || '',
             artists: t.artists || [catalogAlbum.artist],
@@ -120,9 +118,9 @@ export class AlbumController {
             durationMs: t.durationMs || 220000,
             playbackType: effectivePlaybackType,
             streamUrl: t.streamUrl || `/api/songs/${trackId}/stream`,
-            embedId: isDummyEmbed ? undefined : t.embedId,
+            embedId: has11CharEmbed ? t.embedId : undefined,
             previewUrl: t.previewUrl || t.streamUrl || `/api/songs/${trackId}/stream`,
-            isFullLength: t.isFullLength !== false,
+            isFullLength: true,
           };
         });
 

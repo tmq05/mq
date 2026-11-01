@@ -6,6 +6,7 @@ const router = Router();
 
 router.get('/trending', songController.getTrending);
 router.get('/vpop', songController.getVietnameseHits);
+router.get('/resolve-full', songController.resolveFullTrack);
 router.get('/stream-info/:source/:sourceId', songController.getStreamInfo);
 router.get('/:source/:sourceId/stream-info', songController.getStreamInfo);
 router.get('/:id/stream', songController.streamSong);

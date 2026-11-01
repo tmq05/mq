@@ -10,8 +10,47 @@ import { spotifyProvider } from '../providers/spotify.provider.js';
 import { zingMp3Provider } from '../providers/zingmp3.provider.js';
 import { searchService } from '../services/search.service.js';
 import { ALBUMS_CATALOG } from '../utils/albums-data.js';
+import { resolveExactFullTrack } from '../utils/track-resolver.js';
 
 export class SongController {
+  async resolveFullTrack(req: Request, res: Response, next: NextFunction) {
+    try {
+      const title = (req.query.title as string) || '';
+      const artist = (req.query.artist as string) || '';
+      const id = (req.query.id as string) || '';
+
+      let songTitle = title;
+      let songArtist = artist;
+
+      if (!songTitle && id) {
+        const track = await songService.getSong(id);
+        if (track) {
+          songTitle = track.title;
+          songArtist = track.artists?.[0] || '';
+          if (track.embedId && track.embedId.length === 11) {
+            res.json({ videoId: track.embedId, isFullLength: true });
+            return;
+          }
+        }
+      }
+
+      if (!songTitle) {
+        res.status(400).json({ message: 'Thiếu thông tin bài hát' });
+        return;
+      }
+
+      const videoId = await resolveExactFullTrack(songTitle, songArtist);
+      if (videoId && videoId.length === 11) {
+        res.json({ videoId, isFullLength: true });
+        return;
+      }
+
+      res.status(404).json({ message: 'Không tìm thấy video phát đầy đủ' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async getSong(req: Request, res: Response, next: NextFunction) {
     try {
       const id = req.params.id;

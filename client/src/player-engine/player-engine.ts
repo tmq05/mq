@@ -36,14 +36,35 @@ export class PlayerEngine {
   }
 
   async loadTrack(track: UnifiedTrack, autoPlay = true): Promise<void> {
-    let targetType: 'audio' | 'youtube' | 'spotify' | 'zingmp3' = 'audio';
-    if (track.source === 'spotify' || track.playbackType === 'spotify') {
-      targetType = 'audio';
-    } else if (track.playbackType === 'youtube' || (track.embedId && track.embedId.length === 11)) {
-      targetType = 'youtube';
-    } else {
-      targetType = 'audio';
+    // 1. Check if track already has an 11-char YouTube embedId for full-length playback
+    let isYouTube = Boolean(
+      (track.embedId && track.embedId.length === 11) ||
+      (track.playbackType === 'youtube' && track.sourceId && track.sourceId.length === 11)
+    );
+
+    // 2. If it does not have an 11-char YouTube ID (e.g. only 30s preview),
+    // automatically resolve the full-length YouTube video ID dynamically!
+    if (!isYouTube && track.title) {
+      try {
+        const artist = track.artists?.[0] || '';
+        const res = await fetch(
+          `/api/songs/resolve-full?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(artist)}&id=${encodeURIComponent(track.id || '')}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.videoId && data.videoId.length === 11) {
+            track.embedId = data.videoId;
+            track.playbackType = 'youtube';
+            track.isFullLength = true;
+            isYouTube = true;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not dynamically resolve full track', err);
+      }
     }
+
+    const targetType: 'audio' | 'youtube' | 'spotify' | 'zingmp3' = isYouTube ? 'youtube' : 'audio';
 
     // If adapter type changed, clean up previous adapter completely
     if (!this.currentAdapter || this.currentAdapter.type !== targetType) {
