@@ -47,7 +47,49 @@ const KNOWN_EXACT_TRACKS: Record<string, string> = {
   // Hoàng Dũng
   'nang tho hoang dung': '0SJAzTGh1SE',
   'yeu duoi hoang dung': '7JkM3t8g-m4',
-  'doi muoi hoang dung': '7C2zLQSZ98A',
+  'doi muoi hoang dung': 'WgYQhO5D9uk',
+  'cho anh nhe hoang dung': '0chK12qHGfM',
+
+  // MONO
+  'waiting for you mono': 'CHw1b_1LVBA',
+  'waiting for you': 'CHw1b_1LVBA',
+  'em la mono': 'sRUoOA21ZFI',
+  'quen anh di mono': 'Wsl5-SYE9gg',
+  'l i e mono': 'KLZgIuTQDA4',
+  'lie mono': 'KLZgIuTQDA4',
+  'anh khong the mono': 'fyf8z1njZs4',
+  'buong mono': '2jY2F_C6gBM',
+  'cham hoa mono': 'WCm2elbTEZQ',
+
+  // RPT MCK
+  'chim sau rpt mck': 'Yw9Ra2UiVLw',
+  'chim sau mck': 'Yw9Ra2UiVLw',
+  'tai vi sao rpt mck': 'IE02GRUWnOw',
+  'tai vi sao mck': 'IE02GRUWnOw',
+  'suit tie rpt mck': '1jTSZWRFEB8',
+  'suit tie mck': '1jTSZWRFEB8',
+  'chi mot dem nua thoi rpt mck': '5WkwBKu1le0',
+  'anh da on hon rpt mck': 'dz6xe0xXqYE',
+  'ai moi la ke xau xa rpt mck': '9f1u_U3Hvf4',
+
+  // GREY D
+  'vaicaunoicokhiennguoithaydoi grey d': '2iidlwQ-NfU',
+  'du bao thoi tiet hom nay mua grey d': 'c4MKfX6qSxE',
+  'dua em ve nha grey d': 'wvcSGGdnnII',
+  'anh sang man dem grey d': 'sXla4x9H2zA',
+
+  // AMEE
+  'sao anh chua ve nha amee': 'RlBkvjVss-s',
+  'anh nha o dau the amee': 'iE52-XXnQqs',
+  'troi giau troi mang di amee': 'QHDkHZPHzC0',
+  'den da khong duong amee': 'ZwDxaM5VBJM',
+
+  // Low G
+  'co em madihu': 'DcCISK3sCYg',
+  'co em low g': 'DcCISK3sCYg',
+  'cang cua low g': 'yZW8jzWb5yA',
+  'an than low g': 'wKiSIO6Tffo',
+  'simp gai 808 low g': '6aBnhxRvmok',
 
   // Bích Phương
   'bua yeu bich phuong': 'FkOt19CUC30',
@@ -57,7 +99,6 @@ const KNOWN_EXACT_TRACKS: Record<string, string> = {
   'bao gio lay chong bich phuong': '7p3h1Yd4-YQ',
 
   // Other Vietnamese Hits
-  'cham hoa mono': 'WCm2elbTEZQ',
   'vung an toan b ray': '_XX248bq6Pw',
   'cuoi chieu haisam': 'WfJC8yrsdnA',
   'lanh thoi dung mua haisam': 'pYmAgBSq_Ug',

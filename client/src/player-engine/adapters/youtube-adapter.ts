@@ -105,8 +105,29 @@ export class YouTubeAdapter implements PlayerAdapter {
           onStateChange: (event: any) => {
             this.handleStateChange(event.data);
           },
-          onError: (event: any) => {
+          onError: async (event: any) => {
             const code = event.data;
+            if ((code === 101 || code === 150 || code === 100) && track.title) {
+              try {
+                const artist = track.artists?.[0] || '';
+                const res = await fetch(
+                  `/api/songs/resolve-full?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(artist)}`
+                );
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data?.videoId && data.videoId !== videoId && data.videoId.length === 11) {
+                    track.embedId = data.videoId;
+                    if (this.player && typeof this.player.loadVideoById === 'function') {
+                      this.player.loadVideoById(data.videoId);
+                      return;
+                    }
+                  }
+                }
+              } catch {
+                // ignore
+              }
+            }
+
             let msg = 'Lỗi phát video YouTube';
             if (code === 101 || code === 150) {
               msg = 'Video này bị chặn nhúng bởi chủ sở hữu bản quyền';

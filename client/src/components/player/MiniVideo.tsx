@@ -64,7 +64,7 @@ export const MiniVideo: React.FC = () => {
         <div
           id="youtube-player-mount"
           className={`w-full h-full ${
-            currentTrack?.source !== 'spotify' && currentTrack?.playbackType !== 'spotify' && (currentTrack?.playbackType === 'youtube' || (currentTrack?.embedId && currentTrack?.embedId.length === 11)) ? 'block' : 'hidden'
+            currentTrack?.playbackType === 'youtube' || (currentTrack?.embedId && currentTrack?.embedId.length === 11) ? 'block' : 'hidden'
           }`}
         />
         {isVisible && currentTrack?.playbackType !== 'youtube' && (!currentTrack?.embedId || currentTrack?.embedId.length !== 11) && currentTrack?.source === 'zingmp3' && currentTrack?.embedId && (
@@ -77,7 +77,7 @@ export const MiniVideo: React.FC = () => {
             className="w-full h-full"
           />
         )}
-        {isVisible && (currentTrack?.source === 'spotify' || currentTrack?.playbackType === 'spotify') && (currentTrack?.embedId || currentTrack?.sourceId) && (
+        {isVisible && currentTrack?.playbackType !== 'youtube' && (!currentTrack?.embedId || currentTrack?.embedId.length !== 11) && (currentTrack?.source === 'spotify' || currentTrack?.playbackType === 'spotify') && (currentTrack?.embedId || currentTrack?.sourceId) && (
           <iframe
             src={`https://open.spotify.com/embed/track/${currentTrack.embedId || currentTrack.sourceId}?utm_source=generator&theme=0`}
             width="100%"
