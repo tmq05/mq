@@ -49,7 +49,12 @@ export const AlbumDetailPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 p-6 rounded-card border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-surface-dark-soft">
         <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-xl overflow-hidden bg-neutral-200 dark:bg-neutral-800 shadow-md shrink-0 flex items-center justify-center">
           {album.coverUrl ? (
-            <img src={album.coverUrl} alt={album.title} className="w-full h-full object-cover" />
+            <img
+              src={album.coverUrl}
+              alt={album.title}
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover"
+            />
           ) : (
             <Disc3 className="w-16 h-16 text-mute stroke-1" />
           )}
@@ -65,12 +70,20 @@ export const AlbumDetailPage: React.FC = () => {
           <p className="text-sm font-medium text-body dark:text-mute">
             {formatAlbumArtist(album.artist)}
           </p>
-          {album.releaseDate && (
-            <div className="flex items-center justify-center sm:justify-start gap-1 text-xs text-mute mt-1">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{formatDate(album.releaseDate)}</span>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs text-neutral-500 dark:text-neutral-400 font-sans font-medium mt-1">
+            {album.releaseDate && (
+              <div className="flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>{formatDate(album.releaseDate)}</span>
+              </div>
+            )}
+            <span>·</span>
+            <span className="font-semibold text-neutral-900 dark:text-white">
+              {album.tracks?.length || album.tracksCount || 10} bài hát
+            </span>
+            <span>·</span>
+            <span>100% full track</span>
+          </div>
 
           {album.tracks && album.tracks.length > 0 && (
             <div className="pt-3">

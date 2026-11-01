@@ -14,7 +14,6 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album }) => {
   const navigate = useNavigate();
   const { currentTrack, isPlaying, playTrack, togglePlay, addToQueue } = usePlayerStore();
 
-  const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -127,11 +126,6 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album }) => {
     >
       {/* 1:1 Square Cover Container */}
       <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 shadow-inner">
-        {/* Skeleton Blur Placeholder */}
-        {!imageLoaded && !imageError && (
-          <div className="absolute inset-0 animate-pulse bg-neutral-200 dark:bg-neutral-800" />
-        )}
-
         {/* Fallback Cover on Error */}
         {imageError || !album.coverUrl ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-indigo-950 via-neutral-900 to-neutral-950 text-neutral-400 p-4">
@@ -144,25 +138,26 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album }) => {
           <img
             src={album.coverUrl}
             alt={album.title}
+            referrerPolicy="no-referrer"
             loading="lazy"
-            onLoad={() => setImageLoaded(true)}
             onError={() => setImageError(true)}
-            className={`w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-300 motion-reduce:transform-none ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
+            className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-300 motion-reduce:transform-none"
           />
         )}
 
         {/* Top Badges & Actions */}
         <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-10 pointer-events-none">
-          {/* Badge "Mới" */}
-          {isNew ? (
-            <span className="px-2 py-0.5 rounded-pill bg-emerald-500 text-white font-sans font-black text-[10px] shadow-md tracking-wider uppercase pointer-events-auto">
-              MỚI
+          {/* Track count & "MỚI" Badge */}
+          <div className="flex items-center gap-1 pointer-events-auto">
+            {isNew && (
+              <span className="px-2 py-0.5 rounded-pill bg-emerald-500 text-white font-sans font-black text-[10px] shadow-md tracking-wider uppercase">
+                MỚI
+              </span>
+            )}
+            <span className="px-2 py-0.5 rounded-pill bg-black/60 backdrop-blur-md text-white font-sans font-semibold text-[10px] shadow-sm tracking-wide">
+              {album.tracksCount || (album.tracks ? album.tracks.length : 10)} bài
             </span>
-          ) : (
-            <div />
-          )}
+          </div>
 
           {/* Top-Right Action Buttons (Heart + More) */}
           <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 pointer-events-auto">
@@ -283,10 +278,12 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album }) => {
         </div>
 
         {/* Sub-info: Year • Tracks count */}
-        <div className="flex items-center gap-1.5 text-[11px] font-sans font-medium text-neutral-600 dark:text-neutral-300 pt-0.5">
+        <div className="flex items-center gap-1.5 text-[11px] font-sans font-medium text-neutral-500 dark:text-neutral-400 pt-0.5">
           <span>{album.year || (album.releaseDate ? new Date(album.releaseDate).getFullYear() : 2024)}</span>
           <span>•</span>
-          <span>{album.tracksCount || (album.tracks ? album.tracks.length : 10)} bài</span>
+          <span className="text-neutral-700 dark:text-neutral-300 font-semibold">
+            {album.tracksCount || (album.tracks ? album.tracks.length : 10)} bài hát
+          </span>
         </div>
       </div>
     </div>
