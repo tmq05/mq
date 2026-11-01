@@ -9,6 +9,7 @@ import { env } from '../config/env.js';
 import { spotifyProvider } from '../providers/spotify.provider.js';
 import { zingMp3Provider } from '../providers/zingmp3.provider.js';
 import { searchService } from '../services/search.service.js';
+import { ALBUMS_CATALOG } from '../utils/albums-data.js';
 
 export class SongController {
   async getSong(req: Request, res: Response, next: NextFunction) {
@@ -32,14 +33,35 @@ export class SongController {
       // Handle Spotify stream requests
       if (id.startsWith('spotify:')) {
         const sourceId = id.replace(/^spotify:/, '');
-        const track = await spotifyProvider.getTrack(sourceId);
-        if (track) {
-          if (track.previewUrl && track.previewUrl.startsWith('http')) {
-            const piped = await pipeRemoteAudio(track.previewUrl, req, res);
-            if (piped) return;
-          }
+        let track = await spotifyProvider.getTrack(sourceId);
+        let songTitle = track?.title;
+        let songArtist = track?.artists?.[0];
 
-          const q = encodeURIComponent(`${track.title} ${track.artists[0] || ''}`);
+        if (!songTitle) {
+          // Look up in ALBUMS_CATALOG
+          for (const alb of ALBUMS_CATALOG) {
+            const found = alb.tracks.find(
+              (t) =>
+                t.sourceId === sourceId ||
+                t.id === id ||
+                t.id === `spotify:${sourceId}` ||
+                t.embedId === sourceId
+            );
+            if (found) {
+              songTitle = found.title;
+              songArtist = found.artists?.[0] || alb.artist;
+              break;
+            }
+          }
+        }
+
+        if (track?.previewUrl && track.previewUrl.startsWith('http')) {
+          const piped = await pipeRemoteAudio(track.previewUrl, req, res);
+          if (piped) return;
+        }
+
+        if (songTitle) {
+          const q = encodeURIComponent(`${songTitle} ${songArtist || ''}`);
           try {
             const itunesRes = await fetch(`https://itunes.apple.com/search?term=${q}&entity=song&limit=1`);
             const itunesData = (await itunesRes.json()) as any;

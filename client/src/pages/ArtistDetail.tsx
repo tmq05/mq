@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Play, Heart, Users, Disc3, Check, ArrowLeft, Music2 } from 'lucide-react';
@@ -33,6 +33,12 @@ export const ArtistDetailPage: React.FC = () => {
 
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [id]);
 
   const { data: artist, isLoading, error } = useQuery({
     queryKey: ['artist', id],

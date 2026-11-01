@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Play, Disc3, Calendar } from 'lucide-react';
@@ -22,6 +22,12 @@ export const AlbumDetailPage: React.FC = () => {
     },
     enabled: Boolean(id),
   });
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [id, album]);
 
   if (isLoading) {
     return (

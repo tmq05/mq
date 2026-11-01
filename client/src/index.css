@@ -28,25 +28,6 @@
     color: #ffffff !important;
   }
 
-  /* Inverted elements (white buttons / active chips in dark mode) must have black text */
-  .dark .text-black,
-  .dark .text-black *,
-  .dark .dark\:text-black,
-  .dark .dark\:text-black *,
-  .dark .dark\:text-neutral-900,
-  .dark .dark\:text-neutral-900 *,
-  .dark [data-btn-white],
-  .dark [data-btn-white] *,
-  .dark button.dark\:bg-white,
-  .dark button.dark\:bg-white *,
-  .dark .btn-play-all,
-  .dark .btn-play-all *,
-  .dark [data-pill-active],
-  .dark [data-pill-active] * {
-    color: #000000 !important;
-    fill: #000000 !important;
-  }
-
   .dark .text-body,
   .dark .text-neutral-600 {
     color: #d4d4d8 !important;
@@ -84,4 +65,39 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(115, 115, 115, 0.7);
 }
+
+/* ==========================================================================
+   Unconditional High-Priority Contrast Overrides (Outside any @layer)
+   ========================================================================== */
+
+/* Dark Mode: Active pills & White buttons MUST have dark text */
+html.dark [data-pill-active],
+html.dark [data-pill-active] *,
+html.dark [data-btn-white],
+html.dark [data-btn-white] *,
+html.dark .btn-play-all,
+html.dark .btn-play-all *,
+html.dark .btn-play-all svg,
+html.dark .btn-play-all span,
+html.dark button.dark\:bg-white,
+html.dark button.dark\:bg-white * {
+  color: #000000 !important;
+  fill: #000000 !important;
+}
+
+html.dark [data-pill-active] {
+  background-color: #ffffff !important;
+}
+
+/* Light Mode: Active pills have solid dark background with pure white text */
+html:not(.dark) [data-pill-active],
+html:not(.dark) [data-pill-active] * {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+html:not(.dark) [data-pill-active] {
+  background-color: #0f172a !important;
+}
+
 

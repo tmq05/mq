@@ -42,12 +42,6 @@ export const GenreDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [isSaved, setIsSaved] = useState(false);
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-    if (document.documentElement) document.documentElement.scrollTop = 0;
-    if (document.body) document.body.scrollTop = 0;
-  }, [slug]);
-
   const { data, isLoading, error } = useQuery({
     queryKey: ['genre-detail', slug],
     queryFn: async () => {
@@ -56,6 +50,12 @@ export const GenreDetailPage: React.FC = () => {
     },
     enabled: Boolean(slug),
   });
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [slug, data]);
 
   const songs = data?.songs || [];
   const genre = data?.genre;

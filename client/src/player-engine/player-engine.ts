@@ -37,7 +37,9 @@ export class PlayerEngine {
 
   async loadTrack(track: UnifiedTrack, autoPlay = true): Promise<void> {
     let targetType: 'audio' | 'youtube' | 'spotify' | 'zingmp3' = 'audio';
-    if (track.playbackType === 'youtube' || (track.embedId && track.embedId.length === 11)) {
+    if (track.source === 'spotify' || track.playbackType === 'spotify') {
+      targetType = 'audio';
+    } else if (track.playbackType === 'youtube' || (track.embedId && track.embedId.length === 11)) {
       targetType = 'youtube';
     } else {
       targetType = 'audio';

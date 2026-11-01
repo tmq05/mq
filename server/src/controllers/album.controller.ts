@@ -102,21 +102,29 @@ export class AlbumController {
       );
 
       if (catalogAlbum) {
-        const formattedTracks = catalogAlbum.tracks.map((t, idx) => ({
-          id: t.id || `${catalogAlbum.id}-${idx + 1}`,
-          source: t.source || 'youtube',
-          sourceId: t.sourceId || t.embedId || `${catalogAlbum.id}-${idx + 1}`,
-          title: t.title || '',
-          artists: t.artists || [catalogAlbum.artist],
-          album: catalogAlbum.title,
-          coverUrl: t.coverUrl || catalogAlbum.coverUrl,
-          durationMs: t.durationMs || 220000,
-          playbackType: t.playbackType || 'youtube',
-          streamUrl: t.streamUrl || (t.id ? `/api/songs/${t.id}/stream` : undefined),
-          embedId: t.embedId,
-          previewUrl: t.previewUrl,
-          isFullLength: t.isFullLength !== false,
-        }));
+        const formattedTracks = catalogAlbum.tracks.map((t, idx) => {
+          const isSpotify = t.source === 'spotify' || t.playbackType === 'spotify';
+          const isDummyEmbed = typeof t.embedId === 'string' && t.embedId.endsWith('-embed');
+          const effectivePlaybackType = isSpotify ? 'spotify' : isDummyEmbed ? 'audio' : (t.playbackType || 'youtube');
+          const trackId = t.id || `${catalogAlbum.id}-${idx + 1}`;
+          const effectiveSource = isSpotify ? 'spotify' : isDummyEmbed ? 'audio' : (t.source || 'youtube');
+
+          return {
+            id: trackId,
+            source: effectiveSource,
+            sourceId: t.sourceId || t.embedId || `${catalogAlbum.id}-${idx + 1}`,
+            title: t.title || '',
+            artists: t.artists || [catalogAlbum.artist],
+            album: catalogAlbum.title,
+            coverUrl: t.coverUrl || catalogAlbum.coverUrl,
+            durationMs: t.durationMs || 220000,
+            playbackType: effectivePlaybackType,
+            streamUrl: t.streamUrl || `/api/songs/${trackId}/stream`,
+            embedId: isDummyEmbed ? undefined : t.embedId,
+            previewUrl: t.previewUrl || t.streamUrl || `/api/songs/${trackId}/stream`,
+            isFullLength: t.isFullLength !== false,
+          };
+        });
 
         res.json({
           id: catalogAlbum.id,
