@@ -127,6 +127,37 @@ export class AuthController {
       next(err);
     }
   }
+
+  async changePassword(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user?.userId) {
+        res.status(401).json({ message: 'Chưa đăng nhập' });
+        return;
+      }
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({ message: 'Vui lòng điền đầy đủ mật khẩu hiện tại và mật khẩu mới' });
+        return;
+      }
+      const result = await authService.changePassword(req.user.userId, currentPassword, newPassword);
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || 'Lỗi đổi mật khẩu' });
+    }
+  }
+
+  async logoutAllDevices(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user?.userId) {
+        res.status(401).json({ message: 'Chưa đăng nhập' });
+        return;
+      }
+      const result = await authService.logoutAllDevices(req.user.userId);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const authController = new AuthController();

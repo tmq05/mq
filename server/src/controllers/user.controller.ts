@@ -42,6 +42,32 @@ export class UserController {
       next(err);
     }
   }
+
+  async getStats(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user?.userId) {
+        res.status(401).json({ message: 'Vui lòng đăng nhập' });
+        return;
+      }
+      const userId = req.user.userId;
+      const { prisma } = await import('../config/prisma.js');
+      const [playlistCount, likesCount, followsCount, historyCount] = await Promise.all([
+        prisma.playlist.count({ where: { userId } }),
+        prisma.like.count({ where: { userId } }),
+        prisma.follow.count({ where: { userId } }),
+        prisma.playHistory.count({ where: { userId } }),
+      ]);
+      const hoursListened = Math.max(1, Math.round((historyCount * 3.5) / 60));
+      res.json({
+        playlists: playlistCount,
+        likes: likesCount,
+        following: followsCount,
+        hoursListened,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const userController = new UserController();

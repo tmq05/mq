@@ -261,6 +261,38 @@ export class AuthService {
 
     return { message: 'Mật khẩu đã được cập nhật thành công.' };
   }
+
+  async changePassword(userId: string, currentPass: string, newPass: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new Error('Người dùng không tồn tại');
+    }
+
+    const isValid = await bcrypt.compare(currentPass, user.passwordHash);
+    if (!isValid) {
+      throw new Error('Mật khẩu hiện tại không chính xác');
+    }
+
+    if (newPass.length < 6) {
+      throw new Error('Mật khẩu mới phải chứa ít nhất 6 ký tự');
+    }
+
+    const passwordHash = await bcrypt.hash(newPass, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { message: 'Đổi mật khẩu thành công!' };
+  }
+
+  async logoutAllDevices(userId: string) {
+    await prisma.refreshToken.updateMany({
+      where: { userId },
+      data: { revokedAt: new Date() },
+    });
+    return { message: 'Đã đăng xuất khỏi tất cả các thiết bị thành công!' };
+  }
 }
 
 export const authService = new AuthService();

@@ -61,6 +61,10 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  username?: string;
+  bio?: string;
+  location?: string;
+  birthDate?: string;
   role: 'USER' | 'ADMIN';
   avatarUrl?: string;
   isLocked?: boolean;

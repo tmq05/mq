@@ -472,3 +472,4 @@ export const ARTISTS_CATALOG: ArtistMeta[] = [
     searchQueries: ['Ariana Grande', '7 rings', 'we cant be friends'],
   },
 ];
+

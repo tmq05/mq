@@ -24,6 +24,8 @@ router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', requireAuth, authController.getMe);
 router.patch('/profile', requireAuth, authController.updateProfile);
+router.post('/change-password', requireAuth, authController.changePassword);
+router.post('/logout-all', requireAuth, authController.logoutAllDevices);
 router.post('/forgot-password', authLimiter, authController.forgotPassword);
 router.post('/reset-password', authLimiter, authController.resetPassword);
 
