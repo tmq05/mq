@@ -38,6 +38,10 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album }) => {
   })();
 
   const artistName = formatAlbumArtist(album.artist);
+  const trackCount =
+    album.tracks && album.tracks.length > 0
+      ? album.tracks.length
+      : (album.tracksCount ?? 0);
   const artistLink =
     album.artistSlug
       ? `/artists/${album.artistSlug}`
@@ -155,7 +159,7 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album }) => {
               </span>
             )}
             <span className="px-2 py-0.5 rounded-pill bg-black/60 backdrop-blur-md text-white font-sans font-semibold text-[10px] shadow-sm tracking-wide">
-              {album.tracksCount || (album.tracks ? album.tracks.length : 10)} bài
+              {trackCount} bài
             </span>
           </div>
 
@@ -282,7 +286,7 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album }) => {
           <span>{album.year || (album.releaseDate ? new Date(album.releaseDate).getFullYear() : 2024)}</span>
           <span>•</span>
           <span className="text-neutral-700 dark:text-neutral-300 font-semibold">
-            {album.tracksCount || (album.tracks ? album.tracks.length : 10)} bài hát
+            {trackCount} bài hát
           </span>
         </div>
       </div>

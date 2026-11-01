@@ -43,6 +43,8 @@ export const AlbumDetailPage: React.FC = () => {
     );
   }
 
+  const trackCount = album.tracks?.length ?? album.tracksCount ?? 0;
+
   return (
     <div className="space-y-8 pb-12 max-w-7xl mx-auto">
       {/* Banner */}
@@ -79,7 +81,7 @@ export const AlbumDetailPage: React.FC = () => {
             )}
             <span>·</span>
             <span className="font-semibold text-neutral-900 dark:text-white">
-              {album.tracks?.length || album.tracksCount || 10} bài hát
+              {trackCount} bài hát
             </span>
             <span>·</span>
             <span>100% full track</span>
@@ -102,7 +104,7 @@ export const AlbumDetailPage: React.FC = () => {
       {/* Track list */}
       <div className="space-y-2">
         <h3 className="font-display font-bold text-lg text-ink dark:text-white border-b border-hairline dark:border-hairline-dark pb-2">
-          Danh sách ca khúc ({album.tracks?.length || 0})
+          Danh sách ca khúc ({trackCount})
         </h3>
 
         {album.tracks && album.tracks.length > 0 ? (
