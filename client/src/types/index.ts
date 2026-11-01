@@ -99,10 +99,20 @@ export interface Genre {
 
 export interface Album {
   id: string;
+  dbId?: string;
   title: string;
   coverUrl?: string;
   releaseDate?: string;
+  year?: number;
   artist?: string | { id?: string; name: string };
+  artistId?: string;
+  artistSlug?: string;
+  genre?: string;
+  category?: 'vietnam' | 'international';
+  tracksCount?: number;
+  playCount?: number;
+  isFeatured?: boolean;
+  featuredOrder?: number;
   tracks?: UnifiedTrack[];
 }
 

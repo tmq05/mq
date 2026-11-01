@@ -92,7 +92,9 @@ export const ArtistsPage: React.FC = () => {
                       : 'text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white font-medium'
                   }`}
                 >
-                  {tab.label}
+                  <span style={isActive ? { color: isDark ? '#000000' : '#ffffff' } : undefined}>
+                    {tab.label}
+                  </span>
                 </button>
               );
             })}

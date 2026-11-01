@@ -1,25 +1,88 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma.js';
+import { ALBUMS_CATALOG, AlbumMeta } from '../utils/albums-data.js';
 
 export class AlbumController {
   async getAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const albums = await prisma.album.findMany({
-        take: 20,
+      const categoryParam = ((req.query.category as string) || 'all').toLowerCase().trim();
+
+      // 1. Fetch DB albums
+      const dbAlbums = await prisma.album.findMany({
+        take: 30,
         orderBy: { createdAt: 'desc' },
-        include: { artist: true },
+        include: {
+          artist: true,
+          _count: { select: { songs: true } },
+        },
       });
 
-      const formatted = albums.map((album) => ({
+      const formattedDb = dbAlbums.map((album) => ({
         id: `local:${album.id}`,
         dbId: album.id,
         title: album.title,
         coverUrl: album.coverUrl,
         releaseDate: album.releaseDate,
+        year: album.releaseDate ? new Date(album.releaseDate).getFullYear() : 2024,
         artist: album.artist?.name || 'Nhiều nghệ sĩ',
+        artistId: album.artistId ? `local:${album.artistId}` : undefined,
+        tracksCount: album._count?.songs || 10,
+        playCount: 15400000,
+        genre: 'v-pop',
+        category: 'vietnam' as const,
+        isFeatured: true,
+        featuredOrder: 10,
       }));
 
-      res.json({ albums: formatted });
+      // 2. Format catalog albums
+      const formattedCatalog = ALBUMS_CATALOG.map((cat) => ({
+        id: cat.id,
+        dbId: cat.id,
+        title: cat.title,
+        coverUrl: cat.coverUrl,
+        releaseDate: cat.releaseDate,
+        year: cat.year,
+        artist: cat.artist,
+        artistId: cat.artistId,
+        artistSlug: cat.artistSlug,
+        genre: cat.genre,
+        category: cat.category,
+        tracksCount: cat.tracksCount,
+        playCount: cat.playCount,
+        isFeatured: cat.isFeatured,
+        featuredOrder: cat.featuredOrder,
+      }));
+
+      // 3. Merge: Catalog first, then DB albums that aren't duplicate titles
+      const catalogTitles = new Set(formattedCatalog.map((a) => a.title.toLowerCase().trim()));
+      const combined = [
+        ...formattedCatalog,
+        ...formattedDb.filter((a) => !catalogTitles.has(a.title.toLowerCase().trim())),
+      ];
+
+      // 4. Apply filtering / sorting based on category parameter
+      let filtered = combined;
+      if (categoryParam === 'vietnam') {
+        filtered = combined.filter((a) => a.category === 'vietnam');
+      } else if (categoryParam === 'international') {
+        filtered = combined.filter((a) => a.category === 'international');
+      } else if (categoryParam === 'v-pop') {
+        filtered = combined.filter((a) => a.genre === 'v-pop');
+      } else if (categoryParam === 'indie-viet') {
+        filtered = combined.filter((a) => a.genre === 'indie-viet');
+      } else if (categoryParam === 'rap-viet') {
+        filtered = combined.filter((a) => a.genre === 'rap-viet');
+      } else if (categoryParam === 'newest') {
+        filtered = [...combined].sort((a, b) => {
+          const dateA = a.releaseDate ? new Date(a.releaseDate).getTime() : 0;
+          const dateB = b.releaseDate ? new Date(b.releaseDate).getTime() : 0;
+          return dateB - dateA;
+        });
+      } else if (categoryParam === 'popular') {
+        filtered = [...combined].sort((a, b) => (b.playCount || 0) - (a.playCount || 0));
+      }
+
+      res.json({ albums: filtered });
     } catch (err) {
       next(err);
     }
@@ -28,10 +91,54 @@ export class AlbumController {
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const cleanId = id.replace(/^local:/, '');
+      const cleanId = id.replace(/^local:/, '').trim().toLowerCase();
 
+      // 1. Check curated catalog first
+      const catalogAlbum = ALBUMS_CATALOG.find(
+        (a) =>
+          a.id.toLowerCase() === cleanId ||
+          a.id.replace(/^album-/, '').toLowerCase() === cleanId ||
+          a.title.toLowerCase() === cleanId
+      );
+
+      if (catalogAlbum) {
+        const formattedTracks = catalogAlbum.tracks.map((t, idx) => ({
+          id: t.id || `${catalogAlbum.id}-${idx + 1}`,
+          source: t.source || 'youtube',
+          sourceId: t.sourceId || t.embedId || `${catalogAlbum.id}-${idx + 1}`,
+          title: t.title || '',
+          artists: t.artists || [catalogAlbum.artist],
+          album: catalogAlbum.title,
+          coverUrl: t.coverUrl || catalogAlbum.coverUrl,
+          durationMs: t.durationMs || 220000,
+          playbackType: t.playbackType || 'youtube',
+          streamUrl: t.streamUrl || (t.id ? `/api/songs/${t.id}/stream` : undefined),
+          embedId: t.embedId,
+          previewUrl: t.previewUrl,
+          isFullLength: t.isFullLength !== false,
+        }));
+
+        res.json({
+          id: catalogAlbum.id,
+          title: catalogAlbum.title,
+          coverUrl: catalogAlbum.coverUrl,
+          releaseDate: catalogAlbum.releaseDate,
+          year: catalogAlbum.year,
+          artist: catalogAlbum.artist,
+          artistId: catalogAlbum.artistId,
+          artistSlug: catalogAlbum.artistSlug,
+          genre: catalogAlbum.genre,
+          category: catalogAlbum.category,
+          tracksCount: catalogAlbum.tracksCount,
+          playCount: catalogAlbum.playCount,
+          tracks: formattedTracks,
+        });
+        return;
+      }
+
+      // 2. Fall back to Prisma DB
       const album = await prisma.album.findUnique({
-        where: { id: cleanId },
+        where: { id: id.replace(/^local:/, '') },
         include: {
           artist: true,
           songs: {
@@ -68,6 +175,7 @@ export class AlbumController {
         coverUrl: album.coverUrl,
         releaseDate: album.releaseDate,
         artist: album.artist?.name || 'Various Artists',
+        tracksCount: formattedSongs.length,
         tracks: formattedSongs,
       });
     } catch (err) {

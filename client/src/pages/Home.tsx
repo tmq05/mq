@@ -6,10 +6,11 @@ import { api } from '../api/client.js';
 import { SongCard } from '../components/song/SongCard.js';
 import { SongRow } from '../components/song/SongRow.js';
 import { NowPlayingHero } from '../components/player/NowPlayingHero.js';
+import { AlbumCard } from '../components/album/AlbumCard.js';
 import { Button } from '../components/common/Button.js';
 import { usePlayerStore } from '../stores/player-store.js';
 import { UnifiedTrack, Genre, Album } from '../types/index.js';
-import { formatAlbumArtist, formatFollowers } from '../utils/format.js';
+import { formatFollowers } from '../utils/format.js';
 import { getGenreGradient, getGenreColor } from '../utils/genre-styles.js';
 import { useThemeStore } from '../stores/theme-store.js';
 
@@ -20,6 +21,9 @@ export const Home: React.FC = () => {
   const [genreCategory, setGenreCategory] = useState<'all' | 'vietnam' | 'international' | 'mood'>('all');
   const [genreSearch, setGenreSearch] = useState('');
   const [showAllGenres, setShowAllGenres] = useState(false);
+
+  const [albumFilter, setAlbumFilter] = useState<'all' | 'newest' | 'popular' | 'v-pop' | 'indie-viet' | 'rap-viet' | 'international'>('all');
+  const [showAllAlbums, setShowAllAlbums] = useState(false);
 
   // 1. Trending Songs
   const { data: trendingData, isLoading: trendingLoading } = useQuery({
@@ -278,7 +282,9 @@ export const Home: React.FC = () => {
                             : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
                         }`}
                       >
-                        {tab.label}
+                        <span style={isActive ? { color: isDark ? '#000000' : '#ffffff' } : undefined}>
+                          {tab.label}
+                        </span>
                       </button>
                     );
                   })}
@@ -319,11 +325,17 @@ export const Home: React.FC = () => {
                       {/* Top-Left: Category Label & Bold Genre Name */}
                       <div className="relative z-10 pr-10">
                         {genre.categoryLabel && (
-                          <span className="block text-[10px] font-sans font-medium text-white/90 uppercase tracking-wider mb-1">
+                          <span
+                            className="block text-[10px] font-sans font-medium uppercase tracking-wider mb-1"
+                            style={{ color: 'rgba(255, 255, 255, 0.9)' }}
+                          >
                             {genre.categoryLabel}
                           </span>
                         )}
-                        <h3 className="font-display font-black text-lg sm:text-xl text-white tracking-tight leading-tight drop-shadow-sm group-hover:drop-shadow-md">
+                        <h3
+                          className="font-display font-black text-lg sm:text-xl tracking-tight leading-tight drop-shadow-sm group-hover:drop-shadow-md"
+                          style={{ color: '#ffffff' }}
+                        >
                           {genre.name}
                         </h3>
                       </div>
@@ -361,46 +373,122 @@ export const Home: React.FC = () => {
         );
       })()}
 
-      {/* Albums Grid */}
-      {albumsData && albumsData.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between border-b border-hairline dark:border-hairline-dark pb-3">
-            <div className="flex items-center gap-2.5">
-              <Disc3 className="w-5 h-5 text-indigo-500" />
-              <h2 className="font-display font-bold text-xl text-ink dark:text-white">
-                Album chọn lọc
-              </h2>
-            </div>
-          </div>
+      {/* Upgraded Curated Albums Section (Album chọn lọc) */}
+      {albumsData && albumsData.length > 0 && (() => {
+        // In-place filtering and sorting
+        const filteredAlbums = albumsData.filter((a) => {
+          if (albumFilter === 'all' || albumFilter === 'newest' || albumFilter === 'popular') return true;
+          if (albumFilter === 'v-pop') return a.genre === 'v-pop';
+          if (albumFilter === 'indie-viet') return a.genre === 'indie-viet';
+          if (albumFilter === 'rap-viet') return a.genre === 'rap-viet';
+          if (albumFilter === 'international') return a.category === 'international';
+          return true;
+        });
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {albumsData.map((album) => (
+        const sortedAlbums = [...filteredAlbums].sort((a, b) => {
+          if (albumFilter === 'newest') {
+            const dateA = new Date(a.releaseDate || '').getTime() || 0;
+            const dateB = new Date(b.releaseDate || '').getTime() || 0;
+            return dateB - dateA;
+          }
+          if (albumFilter === 'popular') {
+            return (b.playCount || 0) - (a.playCount || 0);
+          }
+          return (a.featuredOrder || 99) - (b.featuredOrder || 99);
+        });
+
+        const displayedAlbums = showAllAlbums ? sortedAlbums : sortedAlbums.slice(0, 10);
+
+        const albumFilterTabs = [
+          { id: 'all', label: 'Tất cả' },
+          { id: 'newest', label: 'Mới nhất' },
+          { id: 'popular', label: 'Thịnh hành' },
+          { id: 'v-pop', label: 'V-Pop' },
+          { id: 'indie-viet', label: 'Indie Việt' },
+          { id: 'rap-viet', label: 'Rap Việt' },
+          { id: 'international', label: 'Quốc tế' },
+        ];
+
+        return (
+          <section className="space-y-5 pt-2">
+            {/* Header: Title with Disc3 icon + "Xem tất cả" link */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-hairline dark:border-hairline-dark pb-3">
+              <div className="flex items-center gap-2.5">
+                <Disc3 className="w-5 h-5 text-indigo-500 shrink-0" />
+                <h2 className="font-display font-bold text-xl text-neutral-900 dark:text-white">
+                  Album chọn lọc
+                </h2>
+              </div>
+
+              {/* "Xem tất cả" CTA button */}
               <Link
-                key={album.id}
-                to={`/albums/${album.id}`}
-                className="group p-3 rounded-card border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card hover:bg-surface-soft dark:hover:bg-surface-dark-soft transition-all"
+                to="/search?q=album"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors group self-start sm:self-auto"
               >
-                <div className="aspect-square w-full rounded-lg overflow-hidden bg-surface-soft mb-3">
-                  <img
-                    src={
-                      album.coverUrl ||
-                      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'
-                    }
-                    alt={album.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <h4 className="font-semibold text-sm truncate text-neutral-900 dark:text-white">
-                  {album.title}
-                </h4>
-                <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">
-                  {formatAlbumArtist(album.artist)}
-                </p>
+                <span>Xem tất cả ({albumsData.length})</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-            ))}
-          </div>
-        </section>
-      )}
+            </div>
+
+            {/* Quick Filter Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {albumFilterTabs.map((tab) => {
+                const isActive = albumFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setAlbumFilter(tab.id as any)}
+                    data-pill-active={isActive ? 'true' : undefined}
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: isDark ? '#ffffff' : '#171717',
+                            color: isDark ? '#000000' : '#ffffff',
+                          }
+                        : {}
+                    }
+                    className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? 'font-bold shadow-sm'
+                        : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
+                    }`}
+                  >
+                    <span style={isActive ? { color: isDark ? '#000000' : '#ffffff' } : undefined}>
+                      {tab.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Responsive Grid: 2 cols mobile, 3 cols sm, 4 cols md, 5 cols lg */}
+            {displayedAlbums.length === 0 ? (
+              <div className="py-12 text-center text-xs text-neutral-500 dark:text-neutral-400 font-sans">
+                Không có album nào trong mục này.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5">
+                {displayedAlbums.map((album) => (
+                  <AlbumCard key={album.id} album={album} />
+                ))}
+              </div>
+            )}
+
+            {/* Load More / Collapse Button */}
+            {sortedAlbums.length > 10 && (
+              <div className="pt-2 text-center">
+                <button
+                  onClick={() => setShowAllAlbums(!showAllAlbums)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-pill bg-surface-soft dark:bg-surface-dark-soft hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-semibold text-neutral-800 dark:text-neutral-200 border border-hairline dark:border-hairline-dark shadow-sm transition-all"
+                >
+                  <span>{showAllAlbums ? 'Thu gọn' : `Xem thêm (${sortedAlbums.length - 10} album)`}</span>
+                  {showAllAlbums ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            )}
+          </section>
+        );
+      })()}
     </div>
   );
 };

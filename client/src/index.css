@@ -40,7 +40,9 @@
   .dark button.dark\:bg-white,
   .dark button.dark\:bg-white *,
   .dark .btn-play-all,
-  .dark .btn-play-all * {
+  .dark .btn-play-all *,
+  .dark [data-pill-active],
+  .dark [data-pill-active] * {
     color: #000000 !important;
     fill: #000000 !important;
   }

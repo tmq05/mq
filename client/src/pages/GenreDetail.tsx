@@ -43,7 +43,9 @@ export const GenreDetailPage: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    window.scrollTo(0, 0);
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
   }, [slug]);
 
   const { data, isLoading, error } = useQuery({
@@ -276,7 +278,9 @@ export const GenreDetailPage: React.FC = () => {
                       : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
                   }`}
                 >
-                  {tab.label}
+                  <span style={isActive ? { color: isDark ? '#000000' : '#ffffff' } : undefined}>
+                    {tab.label}
+                  </span>
                 </button>
               );
             })}
