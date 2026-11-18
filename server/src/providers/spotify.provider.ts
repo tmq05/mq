@@ -126,7 +126,7 @@ export class SpotifyProvider implements MusicProvider {
 
       const res = await axios.get('https://api.spotify.com/v1/search', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { q: query, type: spotifyType, limit, offset },
+        params: { q: query, type: spotifyType, limit, offset, market: 'VN' },
         timeout: 5000,
       });
 
