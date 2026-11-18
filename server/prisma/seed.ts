@@ -458,12 +458,6 @@ async function main() {
       isFullLength: true,
       playCount: 1780,
     },
-      playbackType: 'audio',
-      streamUrl: '/api/songs/local-song-20/stream',
-      lyrics: sampleSyncedLyrics,
-      isFullLength: true,
-      playCount: 1780,
-    },
   ];
 
   const songs = await Promise.all(
