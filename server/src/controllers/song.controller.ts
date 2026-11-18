@@ -18,16 +18,24 @@ export class SongController {
       const title = (req.query.title as string) || '';
       const artist = (req.query.artist as string) || '';
       const id = (req.query.id as string) || '';
+      const durationMs = Number(req.query.durationMs) || 0;
+      const excludeRaw = (req.query.exclude as string) || '';
+      const excludeIds = excludeRaw
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
 
       let songTitle = title;
       let songArtist = artist;
+      let songDurationMs = durationMs;
 
       if (!songTitle && id) {
         const track = await songService.getSong(id);
         if (track) {
           songTitle = track.title;
           songArtist = track.artists?.[0] || '';
-          if (track.embedId && track.embedId.length === 11) {
+          songDurationMs = songDurationMs || track.durationMs || 0;
+          if (track.embedId && track.embedId.length === 11 && !excludeIds.includes(track.embedId)) {
             res.json({ videoId: track.embedId, isFullLength: true });
             return;
           }
@@ -39,7 +47,7 @@ export class SongController {
         return;
       }
 
-      const videoId = await resolveExactFullTrack(songTitle, songArtist);
+      const videoId = await resolveExactFullTrack(songTitle, songArtist, songDurationMs, excludeIds);
       if (videoId && videoId.length === 11) {
         res.json({ videoId, isFullLength: true });
         return;
@@ -94,93 +102,43 @@ export class SongController {
           }
         }
 
-        if (track?.previewUrl && track.previewUrl.startsWith('http')) {
-          const piped = await pipeRemoteAudio(track.previewUrl, req, res);
+        let remotePreviewUrl =
+          track?.previewUrl && track.previewUrl.startsWith('http') ? track.previewUrl : null;
+        if (!remotePreviewUrl) {
+          remotePreviewUrl = await spotifyProvider.getEmbedPreviewUrl(sourceId);
+        }
+
+        if (remotePreviewUrl) {
+          const piped = await pipeRemoteAudio(remotePreviewUrl, req, res);
           if (piped) return;
         }
 
-        if (songTitle) {
-          const q = encodeURIComponent(`${songTitle} ${songArtist || ''}`);
-          try {
-            const itunesRes = await fetch(`https://itunes.apple.com/search?term=${q}&entity=song&limit=1`);
-            const itunesData = (await itunesRes.json()) as any;
-            const preview = itunesData.results?.[0]?.previewUrl;
-            if (preview) {
-              const piped = await pipeRemoteAudio(preview, req, res);
-              if (piped) return;
-            }
-          } catch {
-            // ignore
-          }
-
-          try {
-            const deezerRes = await fetch(`https://api.deezer.com/search?q=${q}&limit=1`);
-            const deezerData = (await deezerRes.json()) as any;
-            const preview = deezerData.data?.[0]?.preview;
-            if (preview) {
-              const piped = await pipeRemoteAudio(preview, req, res);
-              if (piped) return;
-            }
-          } catch {
-            // ignore
-          }
-        }
-
-        // Reliable fallback to sample audio so sound ALWAYS plays
-        const sampleCandidates = [
-          path.resolve(process.cwd(), env.UPLOAD_DIR, 'audio', 'sample.mp3'),
-          path.resolve(process.cwd(), 'server', env.UPLOAD_DIR, 'audio', 'sample.mp3'),
-          path.resolve(process.cwd(), 'uploads', 'audio', 'sample.mp3'),
-        ];
-        const found = sampleCandidates.find((p) => fs.existsSync(p));
-        if (found) {
-          streamAudioFile(found, req, res);
-          return;
-        }
+        res.status(404).json({
+          success: false,
+          message: 'Spotify không cung cấp luồng âm thanh trực tiếp cho bài hát này.',
+        });
+        return;
       }
 
-      // Handle Zing MP3 stream requests
+      // Handle Zing MP3 stream requests (strictly same-source, no cross-provider fallback)
       if (id.startsWith('zingmp3:')) {
         const sourceId = id.replace(/^zingmp3:/, '');
         const track = await zingMp3Provider.getTrack(sourceId);
-        if (track) {
-          const q = encodeURIComponent(`${track.title} ${track.artists[0] || ''}`);
-          try {
-            const itunesRes = await fetch(`https://itunes.apple.com/search?term=${q}&entity=song&limit=1`);
-            const itunesData = (await itunesRes.json()) as any;
-            const preview = itunesData.results?.[0]?.previewUrl;
-            if (preview) {
-              const piped = await pipeRemoteAudio(preview, req, res);
-              if (piped) return;
-            }
-          } catch {
-            // ignore
-          }
-
-          try {
-            const deezerRes = await fetch(`https://api.deezer.com/search?q=${q}&limit=1`);
-            const deezerData = (await deezerRes.json()) as any;
-            const preview = deezerData.data?.[0]?.preview;
-            if (preview) {
-              const piped = await pipeRemoteAudio(preview, req, res);
-              if (piped) return;
-            }
-          } catch {
-            // ignore
-          }
+        const remoteStream = track?.streamUrl?.startsWith('http')
+          ? track.streamUrl
+          : track?.previewUrl?.startsWith('http')
+            ? track.previewUrl
+            : null;
+        if (remoteStream) {
+          const piped = await pipeRemoteAudio(remoteStream, req, res);
+          if (piped) return;
         }
 
-        // Reliable fallback to sample audio so sound ALWAYS plays
-        const sampleCandidates = [
-          path.resolve(process.cwd(), env.UPLOAD_DIR, 'audio', 'sample.mp3'),
-          path.resolve(process.cwd(), 'server', env.UPLOAD_DIR, 'audio', 'sample.mp3'),
-          path.resolve(process.cwd(), 'uploads', 'audio', 'sample.mp3'),
-        ];
-        const found = sampleCandidates.find((p) => fs.existsSync(p));
-        if (found) {
-          streamAudioFile(found, req, res);
-          return;
-        }
+        res.status(404).json({
+          success: false,
+          message: 'Zing MP3 không cung cấp luồng âm thanh trực tiếp cho bài hát này.',
+        });
+        return;
       }
 
       const cleanId = id.replace(/^local:/, '');

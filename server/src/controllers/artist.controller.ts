@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma.js';
 import { spotifyProvider } from '../providers/spotify.provider.js';
+import { itunesProvider } from '../providers/itunes.provider.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { ARTISTS_CATALOG, ArtistMeta } from '../utils/artists-data.js';
 import { resolveExactFullTrack } from '../utils/track-resolver.js';
@@ -12,62 +13,83 @@ export class ArtistController {
       const category = (req.query.category as string || 'all').toLowerCase();
       const searchQuery = (req.query.q as string || '').trim().toLowerCase();
 
-      // 1. Get database artists for custom or locally saved records
+      // 1. Get all artists from database as single source of truth
       const dbArtists = await prisma.artist.findMany({
-        orderBy: { name: 'asc' },
+        orderBy: { createdAt: 'desc' },
         include: { _count: { select: { songs: true, followers: true } } },
       });
 
-      // 2. Map catalog artists to standard response format
-      const catalogItems = ARTISTS_CATALOG.map((a) => {
-        const dbMatch = dbArtists.find(
-          (db) => db.name.toLowerCase() === a.name.toLowerCase()
-        );
-        const followerCount = a.followers + (dbMatch?._count.followers || 0);
-        return {
-          id: a.id,
-          slug: a.slug,
-          name: a.name,
-          category: a.category,
-          genre: a.genre,
-          bio: a.bio,
-          imageUrl: a.imageUrl,
-          spotifyId: a.spotifyId,
-          _count: {
-            songs: dbMatch?._count.songs || 15,
-            followers: followerCount,
-          },
-          followers: followerCount,
-        };
-      });
+      const catalogByName = new Map(
+        ARTISTS_CATALOG.map((a, idx) => [a.name.toLowerCase(), { meta: a, idx }])
+      );
+      const catalogById = new Map(
+        ARTISTS_CATALOG.map((a, idx) => [a.id, { meta: a, idx }])
+      );
 
-      // 3. Add any DB artists that are not in the curated catalog
-      const catalogNames = new Set(ARTISTS_CATALOG.map((a) => a.name.toLowerCase()));
-      const extraDbArtists = dbArtists
-        .filter((db) => !catalogNames.has(db.name.toLowerCase()))
-        .map((db) => ({
-          id: db.id,
-          slug: db.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          name: db.name,
-          category: 'vietnam' as const,
-          genre: 'Nhạc Trẻ',
-          bio: db.bio || 'Nghệ sĩ âm nhạc',
-          imageUrl: db.imageUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
-          _count: {
-            songs: db._count.songs,
-            followers: 500000 + db._count.followers,
-          },
-          followers: 500000 + db._count.followers,
-        }));
+      // 2. Lấy số liệu thật từ Spotify cho toàn bộ nghệ sĩ có spotifyId
+      const spotifyIds = dbArtists
+        .map((db) => {
+          const match = catalogById.get(db.id) || catalogByName.get(db.name.toLowerCase());
+          return match?.meta?.spotifyId || (db.source === 'spotify' ? db.sourceId : null) || null;
+        })
+        .filter((id): id is string => Boolean(id));
 
-      let allArtists = [...catalogItems, ...extraDbArtists];
+      const spotifyMap = await spotifyProvider.getArtistsBatch(spotifyIds);
 
-      // 4. Category Filter
+      // 3. Map DB artists, chỉ giữ nghệ sĩ có thật (khớp Spotify hoặc có bài hát thật trong DB)
+      let allArtists = dbArtists
+        .map((db) => {
+          const match = catalogById.get(db.id) || catalogByName.get(db.name.toLowerCase());
+          const meta = match?.meta;
+          const spotifyId = meta?.spotifyId || (db.source === 'spotify' ? db.sourceId : undefined) || undefined;
+          const sp = spotifyId ? spotifyMap.get(spotifyId) : undefined;
+
+          // Bỏ qua nghệ sĩ ảo không tồn tại trên Spotify và không có bài hát nào trong DB
+          if (!sp && db._count.songs === 0 && !meta) {
+            return null;
+          }
+
+          const realFollowers = (sp?.followersCount ?? meta?.followers ?? 0) + db._count.followers;
+          const realSongCount = db._count.songs > 0 ? db._count.songs : (sp?.topTrackCount ?? 0);
+
+          return {
+            _sortOrder: match ? match.idx : -1,
+            id: db.id,
+            slug: meta?.slug || db.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            name: sp?.name || db.name,
+            category: meta?.category || ('vietnam' as const),
+            genre: sp?.genres?.[0] || meta?.genre || 'Âm nhạc',
+            bio: db.bio || meta?.bio || 'Nghệ sĩ âm nhạc',
+            imageUrl:
+              sp?.imageUrl ||
+              db.imageUrl ||
+              meta?.imageUrl ||
+              'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
+            isVerified: db.isVerified || Boolean(sp),
+            spotifyId,
+            _count: {
+              songs: realSongCount,
+              followers: realFollowers,
+            },
+            followers: realFollowers,
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null)
+        .sort((a, b) => {
+          // Newly created custom DB artists first, then catalog order
+          if (a._sortOrder === -1 && b._sortOrder !== -1) return -1;
+          if (a._sortOrder !== -1 && b._sortOrder === -1) return 1;
+          if (a._sortOrder !== -1 && b._sortOrder !== -1) return a._sortOrder - b._sortOrder;
+          return 0;
+        })
+        .map(({ _sortOrder, ...rest }) => rest);
+
+      // 3. Category Filter
       if (category === 'vietnam' || category === 'international') {
         allArtists = allArtists.filter((a) => a.category === category);
       }
 
-      // 5. Search Filter
+      // 4. Search Filter
       if (searchQuery) {
         allArtists = allArtists.filter(
           (a) =>
@@ -96,9 +118,100 @@ export class ArtistController {
         const sourceId = cleanId.replace('spotify:', '');
         const extArtist = await spotifyProvider.getArtist(sourceId);
         if (extArtist) {
-          res.json(extArtist);
+          const dbArtist = await prisma.artist.findFirst({
+            where: {
+              OR: [
+                { source: 'spotify', sourceId },
+                { name: { equals: extArtist.name, mode: 'insensitive' } },
+              ],
+            },
+            include: { _count: { select: { followers: true } } },
+          });
+
+          let isFollowing = false;
+          if (req.user?.userId && dbArtist) {
+            const follow = await prisma.follow.findUnique({
+              where: {
+                userId_artistId: {
+                  userId: req.user.userId,
+                  artistId: dbArtist.id,
+                },
+              },
+            });
+            isFollowing = Boolean(follow);
+          }
+
+          res.json({
+            ...extArtist,
+            dbId: dbArtist?.id,
+            isFollowing,
+            followersCount: (extArtist.followersCount || 0) + (dbArtist?._count?.followers || 0),
+          });
           return;
         }
+      }
+
+      // 1b. Check if external iTunes / Apple Music ID prefix
+      if (cleanId.startsWith('itunes:')) {
+        const sourceId = cleanId.replace('itunes:', '');
+        const extArtist = await itunesProvider.getArtist(sourceId);
+        if (extArtist) {
+          const normalizeKey = (s: string) =>
+            s
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .replace(/đ/gi, 'd')
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '');
+          const extKey = normalizeKey(extArtist.name);
+
+          // Ưu tiên khớp nghệ sĩ trên Spotify (kể cả khác dấu/khoảng trắng như "Bùi Trường Linh" vs "buitruonglinh")
+          try {
+            const spRes = await spotifyProvider.search(extArtist.name, 'artist');
+            const exact = spRes.artists?.find((a) => normalizeKey(a.name) === extKey);
+            if (exact) {
+              const fullSpotifyArtist = await spotifyProvider.getArtist(exact.sourceId);
+              if (fullSpotifyArtist) {
+                res.json(fullSpotifyArtist);
+                return;
+              }
+            }
+          } catch {
+            // ignore optional Spotify match
+          }
+
+          let topTracks = extArtist.topTracks || [];
+          if (topTracks.length === 0) {
+            try {
+              const trackFallback = await itunesProvider.search(extArtist.name, 'track', 10);
+              topTracks = trackFallback.tracks.filter((t) =>
+                t.artists.some((a) => normalizeKey(a) === extKey)
+              );
+            } catch {
+              // ignore
+            }
+          }
+
+          res.json({
+            id: extArtist.id,
+            name: extArtist.name,
+            bio: `Nghệ sĩ ${extArtist.name} trên Apple Music / iTunes.`,
+            imageUrl:
+              extArtist.imageUrl ||
+              topTracks[0]?.coverUrl ||
+              'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80',
+            genre: extArtist.genre || 'Âm nhạc',
+            category: 'vietnam',
+            followersCount: 100000,
+            isVerified: false,
+            isFollowed: false,
+            topTracks,
+            albums: [],
+          });
+          return;
+        }
+        res.status(404).json({ message: 'Không tìm thấy nghệ sĩ' });
+        return;
       }
 
       // 2. Find in ARTISTS_CATALOG
@@ -111,62 +224,71 @@ export class ArtistController {
           cleanId.endsWith(a.slug)
       );
 
-      let artistName = catalogMatch ? catalogMatch.name : '';
-      let bio = catalogMatch?.bio || '';
-      let imageUrl = catalogMatch?.imageUrl || '';
+      let artistName = '';
+      let bio = '';
+      let imageUrl = '';
       let genre = catalogMatch?.genre || 'Nhạc Việt';
       let category = catalogMatch?.category || 'vietnam';
-      let followersCount = catalogMatch?.followers || 1000000;
+      let followersCount = catalogMatch?.followers || 500000;
+      let isVerified = false;
       let matchedDbArtist: any = null;
 
-      // 3. Find in Database
-      if (catalogMatch) {
-        matchedDbArtist = await prisma.artist.findFirst({
-          where: {
-            OR: [
-              { name: { equals: catalogMatch.name, mode: 'insensitive' } },
-              { id: cleanId },
-            ],
-          },
-          include: {
-            albums: true,
-            songs: { take: 20, orderBy: { playCount: 'desc' } },
-            _count: { select: { followers: true } },
-          },
-        });
-      } else {
-        matchedDbArtist = await prisma.artist.findFirst({
-          where: {
-            OR: [
-              { id: cleanId },
-              { name: { equals: cleanId, mode: 'insensitive' } },
-            ],
-          },
-          include: {
-            albums: true,
-            songs: { take: 20, orderBy: { playCount: 'desc' } },
-            _count: { select: { followers: true } },
-          },
-        });
+      // 3. Find in Database (single source of truth for name, bio, imageUrl, isVerified)
+      matchedDbArtist = await prisma.artist.findFirst({
+        where: {
+          OR: [
+            { id: cleanId },
+            { name: { equals: cleanId, mode: 'insensitive' } },
+            ...(catalogMatch
+              ? [
+                  { id: catalogMatch.id },
+                  { name: { equals: catalogMatch.name, mode: 'insensitive' as const } },
+                ]
+              : []),
+          ],
+        },
+        include: {
+          albums: true,
+          songs: { take: 20, orderBy: { playCount: 'desc' } },
+          _count: { select: { followers: true } },
+        },
+      });
 
-        if (matchedDbArtist) {
-          artistName = matchedDbArtist.name;
-          bio = matchedDbArtist.bio || `${matchedDbArtist.name} là nghệ sĩ âm nhạc được yêu thích.`;
-          imageUrl = matchedDbArtist.imageUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80';
-          followersCount = 650000 + matchedDbArtist._count.followers;
-        }
+      if (matchedDbArtist) {
+        artistName = matchedDbArtist.name;
+        bio =
+          matchedDbArtist.bio ||
+          catalogMatch?.bio ||
+          `${matchedDbArtist.name} là nghệ sĩ âm nhạc được yêu thích.`;
+        imageUrl =
+          matchedDbArtist.imageUrl ||
+          catalogMatch?.imageUrl ||
+          'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80';
+        followersCount = (catalogMatch?.followers ?? 0) + matchedDbArtist._count.followers;
+        isVerified = Boolean(matchedDbArtist.isVerified);
+      } else if (catalogMatch) {
+        artistName = catalogMatch.name;
+        bio = catalogMatch.bio;
+        imageUrl = catalogMatch.imageUrl;
+        followersCount = catalogMatch.followers;
+        isVerified = true;
       }
 
-      if (!catalogMatch && !matchedDbArtist) {
-        // Try searching Spotify directly for this artist name
+      if (!catalogMatch && !matchedDbArtist && !cleanId.includes(':')) {
+        // Try searching Spotify directly for this artist name (never search raw prefixed IDs like itunes:123)
         try {
           const spotifyRes = await spotifyProvider.search(cleanId, 'artist');
           if (spotifyRes.artists && spotifyRes.artists.length > 0) {
             const found = spotifyRes.artists[0];
+            const fullSpotify = await spotifyProvider.getArtist(found.sourceId);
+            if (fullSpotify) {
+              res.json(fullSpotify);
+              return;
+            }
             artistName = found.name;
             bio = `Nghệ sĩ ${found.name} trên Spotify.`;
             imageUrl = found.imageUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80';
-            followersCount = found.followersCount || 1000000;
+            followersCount = found.followersCount || 0;
           }
         } catch {
           // ignore
@@ -178,14 +300,23 @@ export class ArtistController {
         return;
       }
 
-      // 4. Fetch Authentic Top Tracks & Albums from Spotify official artist endpoint
+      // 4. Fetch Authentic Top Tracks, Followers & Albums from Spotify official artist endpoint
       let rawTracks: any[] = [];
       let officialAlbums: any[] = [];
+      const targetSpotifyId =
+        catalogMatch?.spotifyId ||
+        (matchedDbArtist?.source === 'spotify' ? matchedDbArtist.sourceId : undefined);
 
-      if (catalogMatch?.spotifyId) {
+      if (targetSpotifyId) {
         try {
-          const spotifyArtist = await spotifyProvider.getArtist(catalogMatch.spotifyId);
+          const spotifyArtist = await spotifyProvider.getArtist(targetSpotifyId);
           if (spotifyArtist) {
+            if (typeof spotifyArtist.followersCount === 'number' && spotifyArtist.followersCount > 0) {
+              followersCount = spotifyArtist.followersCount + (matchedDbArtist?._count?.followers ?? 0);
+            }
+            if (spotifyArtist.imageUrl) {
+              imageUrl = spotifyArtist.imageUrl;
+            }
             if (spotifyArtist.topTracks && spotifyArtist.topTracks.length > 0) {
               rawTracks = spotifyArtist.topTracks;
             }
@@ -194,7 +325,7 @@ export class ArtistController {
             }
           }
         } catch (err: any) {
-          logger.warn({ err: err.message, spotifyId: catalogMatch.spotifyId }, 'Spotify getArtist call failed');
+          logger.warn({ err: err.message, spotifyId: targetSpotifyId }, 'Spotify getArtist call failed');
         }
       }
 
@@ -317,7 +448,8 @@ export class ArtistController {
       }
 
       res.json({
-        id: catalogMatch?.id || (matchedDbArtist ? `local:${matchedDbArtist.id}` : `artist-${cleanId}`),
+        id: matchedDbArtist?.id || catalogMatch?.id || `artist-${cleanId}`,
+        dbId: matchedDbArtist?.id,
         slug: catalogMatch?.slug || cleanId,
         name: artistName,
         bio,
@@ -328,7 +460,8 @@ export class ArtistController {
         topTracks,
         followersCount,
         isFollowing,
-        verified: true,
+        isVerified,
+        verified: isVerified,
       });
     } catch (err) {
       next(err);
@@ -344,29 +477,88 @@ export class ArtistController {
       const { id } = req.params;
       const cleanId = id.replace(/^local:/, '').trim();
 
-      // Look up in database or catalog
+      const catalogMatch = ARTISTS_CATALOG.find(
+        (a) => a.id === cleanId || a.slug === cleanId || cleanId.endsWith(a.slug)
+      );
+
+      const isSpotifyPrefix = cleanId.startsWith('spotify:');
+      const isItunesPrefix = cleanId.startsWith('itunes:');
+      const externalSourceId = isSpotifyPrefix
+        ? cleanId.replace('spotify:', '')
+        : isItunesPrefix
+        ? cleanId.replace('itunes:', '')
+        : null;
+
+      // Look up in database by ID, external sourceId, name, or catalog match
       let dbArtist = await prisma.artist.findFirst({
         where: {
           OR: [
             { id: cleanId },
             { name: { equals: cleanId, mode: 'insensitive' } },
+            ...(externalSourceId ? [{ sourceId: externalSourceId }] : []),
+            ...(catalogMatch
+              ? [
+                  { id: catalogMatch.id },
+                  { name: { equals: catalogMatch.name, mode: 'insensitive' as const } },
+                ]
+              : []),
           ],
         },
       });
 
       // If not in DB, create it from catalog
-      if (!dbArtist) {
-        const catalogMatch = ARTISTS_CATALOG.find(
-          (a) => a.id === cleanId || a.slug === cleanId
-        );
-        if (catalogMatch) {
-          dbArtist = await prisma.artist.create({
-            data: {
-              name: catalogMatch.name,
-              bio: catalogMatch.bio,
-              imageUrl: catalogMatch.imageUrl,
-            },
+      if (!dbArtist && catalogMatch) {
+        dbArtist = await prisma.artist.create({
+          data: {
+            id: catalogMatch.id,
+            name: catalogMatch.name,
+            bio: catalogMatch.bio,
+            imageUrl: catalogMatch.imageUrl,
+            isVerified: true,
+            source: 'catalog',
+            sourceId: catalogMatch.spotifyId || null,
+          },
+        });
+      }
+
+      // Nếu là nghệ sĩ ngoài hệ thống (Spotify / iTunes), tự động lưu vào bảng artists để có thể Theo dõi
+      if (!dbArtist && isSpotifyPrefix && externalSourceId) {
+        const extArtist = await spotifyProvider.getArtist(externalSourceId);
+        if (extArtist) {
+          const byName = await prisma.artist.findFirst({
+            where: { name: { equals: extArtist.name, mode: 'insensitive' } },
           });
+          dbArtist =
+            byName ||
+            (await prisma.artist.create({
+              data: {
+                name: extArtist.name,
+                bio: extArtist.bio || `Nghệ sĩ ${extArtist.name} trên Spotify.`,
+                imageUrl: extArtist.imageUrl || null,
+                isVerified: true,
+                source: 'spotify',
+                sourceId: externalSourceId,
+              },
+            }));
+        }
+      } else if (!dbArtist && isItunesPrefix && externalSourceId) {
+        const extArtist = await itunesProvider.getArtist(externalSourceId);
+        if (extArtist) {
+          const byName = await prisma.artist.findFirst({
+            where: { name: { equals: extArtist.name, mode: 'insensitive' } },
+          });
+          dbArtist =
+            byName ||
+            (await prisma.artist.create({
+              data: {
+                name: extArtist.name,
+                bio: `Nghệ sĩ ${extArtist.name} trên Apple Music / iTunes.`,
+                imageUrl: extArtist.imageUrl || null,
+                isVerified: false,
+                source: 'itunes',
+                sourceId: externalSourceId,
+              },
+            }));
         }
       }
 

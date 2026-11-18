@@ -14,6 +14,8 @@ export class YouTubeAdapter implements PlayerAdapter {
   private events: PlayerEvents;
   private timeTicker: number | null = null;
   private isReady = false;
+  private currentTrack: UnifiedTrack | null = null;
+  private triedVideoIds = new Set<string>();
 
   constructor(events: PlayerEvents) {
     this.events = events;
@@ -49,6 +51,9 @@ export class YouTubeAdapter implements PlayerAdapter {
       this.events.onError('Không tìm thấy YouTube video ID');
       return;
     }
+
+    this.currentTrack = track;
+    this.triedVideoIds = new Set([videoId]);
 
     await YouTubeAdapter.loadIframeAPI();
 
@@ -107,16 +112,23 @@ export class YouTubeAdapter implements PlayerAdapter {
           },
           onError: async (event: any) => {
             const code = event.data;
-            if ((code === 101 || code === 150 || code === 100) && track.title) {
+            const activeTrack = this.currentTrack;
+            if ((code === 101 || code === 150 || code === 100) && activeTrack?.title && this.triedVideoIds.size < 5) {
               try {
-                const artist = track.artists?.[0] || '';
+                const artist = activeTrack.artists?.[0] || '';
+                const exclude = Array.from(this.triedVideoIds).join(',');
                 const res = await fetch(
-                  `/api/songs/resolve-full?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(artist)}`
+                  `/api/songs/resolve-full?title=${encodeURIComponent(activeTrack.title)}&artist=${encodeURIComponent(artist)}&durationMs=${activeTrack.durationMs || 0}&exclude=${encodeURIComponent(exclude)}`
                 );
                 if (res.ok) {
                   const data = await res.json();
-                  if (data?.videoId && data.videoId !== videoId && data.videoId.length === 11) {
-                    track.embedId = data.videoId;
+                  if (
+                    data?.videoId &&
+                    data.videoId.length === 11 &&
+                    !this.triedVideoIds.has(data.videoId)
+                  ) {
+                    this.triedVideoIds.add(data.videoId);
+                    activeTrack.embedId = data.videoId;
                     if (this.player && typeof this.player.loadVideoById === 'function') {
                       this.player.loadVideoById(data.videoId);
                       return;

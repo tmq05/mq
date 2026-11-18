@@ -55,12 +55,12 @@ export default {
           'sans-serif',
         ],
         mono: [
-          'ui-monospace',
-          'SFMono-Regular',
-          'Menlo',
-          'Monaco',
-          'Consolas',
-          'monospace',
+          'ui-sans-serif',
+          'Inter',
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'sans-serif',
         ],
       },
       borderRadius: {

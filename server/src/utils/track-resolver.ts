@@ -112,6 +112,7 @@ const KNOWN_EXACT_TRACKS: Record<string, string> = {
 };
 
 const cache = new Map<string, string>();
+const candidatesCache = new Map<string, string[]>();
 for (const [k, v] of Object.entries(KNOWN_EXACT_TRACKS)) {
   cache.set(k, v);
 }
@@ -126,32 +127,137 @@ function normalizeKey(str: string): string {
     .trim();
 }
 
+function parseLengthTextSeconds(text?: string): number | null {
+  if (!text) return null;
+  const parts = text.trim().split(':').map((p) => Number(p));
+  if (parts.some((n) => Number.isNaN(n))) return null;
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return null;
+}
+
+function scoreYouTubeCandidate(
+  titleText: string,
+  channelText: string,
+  durationSec: number | null,
+  targetDurationSec: number
+): number {
+  const lowerTitle = titleText.toLowerCase();
+  const lowerChannel = channelText.toLowerCase();
+  let score = 0;
+
+  if (lowerChannel.includes(' - topic') || lowerChannel.endsWith('topic')) score += 35;
+  if (lowerTitle.includes('official audio')) score += 30;
+  else if (lowerTitle.includes('audio')) score += 15;
+  if (lowerTitle.includes('lyrics') || lowerTitle.includes('lyric video')) score += 10;
+
+  const noisyKeywords = [
+    'official mv',
+    'music video',
+    'live',
+    'remix',
+    'cover',
+    'karaoke',
+    'instrumental',
+    'nightcore',
+    'slowed',
+    'sped up',
+    'reaction',
+    'teaser',
+  ];
+  for (const kw of noisyKeywords) {
+    if (lowerTitle.includes(kw)) score -= 35;
+  }
+
+  if (targetDurationSec > 0 && durationSec !== null) {
+    const diff = Math.abs(durationSec - targetDurationSec);
+    if (diff <= 5) score += 50;
+    else if (diff <= 12) score += 25;
+    else if (diff <= 25) score += 0;
+    else score -= Math.min(80, Math.round(diff));
+  }
+
+  return score;
+}
+
+function pickCandidatesFromHtml(html: string, durationMs: number): string[] {
+  const targetDurationSec = durationMs > 0 ? Math.round(durationMs / 1000) : 0;
+  const dataMatch = html.match(/var ytInitialData = (\{[\s\S]*?\});<\/script>/);
+  if (dataMatch && dataMatch[1]) {
+    try {
+      const data = JSON.parse(dataMatch[1]);
+      const contents =
+        data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer
+          ?.contents?.[0]?.itemSectionRenderer?.contents;
+      if (Array.isArray(contents)) {
+        const candidates: Array<{ videoId: string; score: number }> = [];
+        for (const item of contents) {
+          const vr = item?.videoRenderer;
+          if (!vr?.videoId || vr.videoId.length !== 11) continue;
+          const titleText =
+            vr.title?.runs?.map((r: any) => r.text).join('') || vr.title?.simpleText || '';
+          const channelText =
+            vr.ownerText?.runs?.map((r: any) => r.text).join('') || '';
+          const durationSec = parseLengthTextSeconds(vr.lengthText?.simpleText);
+          candidates.push({
+            videoId: vr.videoId,
+            score: scoreYouTubeCandidate(titleText, channelText, durationSec, targetDurationSec),
+          });
+          if (candidates.length >= 10) break;
+        }
+        if (candidates.length > 0) {
+          candidates.sort((a, b) => b.score - a.score);
+          return Array.from(new Set(candidates.map((c) => c.videoId)));
+        }
+      }
+    } catch {
+      // Fall through to regex fallback
+    }
+  }
+
+  const matches = Array.from(html.matchAll(/\/watch\?v=([a-zA-Z0-9_-]{11})/g)).map((m) => m[1]);
+  return Array.from(new Set(matches)).slice(0, 8);
+}
+
 /**
  * Resolve the exact full-length official YouTube video ID for any track title & artist.
  * 1. Checks memory cache of known clean audio tracks for instant 0ms response.
- * 2. Uses YouTube search with Official Audio constraint.
+ * 2. Uses YouTube search with Official Audio constraint and duration matching.
  */
 export async function resolveExactFullTrack(
   title: string,
-  artist = ''
+  artist = '',
+  durationMs = 0,
+  excludeIds: string[] = []
 ): Promise<string | null> {
   if (!title) return null;
 
+  const excluded = new Set(excludeIds.filter(Boolean));
   const key = normalizeKey(`${title} ${artist}`);
   const titleKey = normalizeKey(title);
+  const cacheKey = durationMs > 0 ? `${key}:${Math.round(durationMs / 1000)}` : key;
 
-  // 1. Direct cache lookup (key with artist or title only)
-  if (cache.has(key)) {
+  const cachedList = candidatesCache.get(cacheKey);
+  if (cachedList && cachedList.length > 0) {
+    const next = cachedList.find((id) => !excluded.has(id));
+    if (next) return next;
+  }
+
+  // 1. Direct cache lookup (key with artist or title only) when not excluded
+  if (cache.has(cacheKey) && !excluded.has(cache.get(cacheKey)!)) {
+    return cache.get(cacheKey)!;
+  }
+  if (cache.has(key) && !excluded.has(cache.get(key)!)) {
     return cache.get(key)!;
   }
-  if (cache.has(titleKey)) {
+  if (cache.has(titleKey) && !excluded.has(cache.get(titleKey)!)) {
     return cache.get(titleKey)!;
   }
 
   // Safe fuzzy lookup only for reasonably long titles (>= 6 chars) to avoid false positives on short words
   if (titleKey.length >= 6) {
     for (const [k, v] of cache.entries()) {
-      if (k.startsWith(titleKey) || titleKey.startsWith(k)) {
+      if ((k.startsWith(titleKey) || titleKey.startsWith(k)) && !excluded.has(v)) {
         return v;
       }
     }
@@ -159,7 +265,10 @@ export async function resolveExactFullTrack(
 
   // 2. Query YouTube search with Official Audio constraint
   try {
-    const searchQuery = `${title} ${artist} Official Audio`.trim();
+    const searchQuery =
+      excluded.size > 0
+        ? `${title} ${artist} Lyrics Audio`.trim()
+        : `${title} ${artist} Official Audio`.trim();
     const res = await axios.get(
       `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}`,
       {
@@ -174,12 +283,19 @@ export async function resolveExactFullTrack(
 
     const html = res.data;
     if (typeof html === 'string') {
-      const match = html.match(/\/watch\?v=([a-zA-Z0-9_-]{11})/);
-      if (match && match[1]) {
-        const videoId = match[1];
-        cache.set(key, videoId);
-        logger.info({ title, artist, videoId }, 'Resolved exact full-length track on YouTube');
-        return videoId;
+      const candidates = pickCandidatesFromHtml(html, durationMs);
+      if (candidates.length > 0) {
+        const merged = Array.from(new Set([...(cachedList || []), ...candidates]));
+        candidatesCache.set(cacheKey, merged);
+        const videoId = candidates.find((id) => !excluded.has(id)) || null;
+        if (videoId) {
+          cache.set(cacheKey, videoId);
+          logger.info(
+            { title, artist, durationMs, videoId, excludedCount: excluded.size },
+            'Resolved duration-matched full-length track on YouTube'
+          );
+          return videoId;
+        }
       }
     }
   } catch (err: any) {

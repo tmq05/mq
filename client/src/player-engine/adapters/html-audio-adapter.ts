@@ -59,7 +59,12 @@ export class HtmlAudioAdapter implements PlayerAdapter {
 
     this.audio.addEventListener('error', () => {
       const err = this.audio?.error;
-      const msg = err ? `Lỗi tải tệp âm thanh (code ${err.code})` : 'Lỗi không xác định khi phát';
+      const msg =
+        err?.code === 4 && track.source === 'spotify'
+          ? 'Spotify không cung cấp luồng âm thanh cho bài hát này (code 4)'
+          : err
+            ? `Lỗi tải tệp âm thanh (code ${err.code})`
+            : 'Lỗi không xác định khi phát';
       this.events.onError(msg);
     });
 

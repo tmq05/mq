@@ -1,6 +1,10 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { prisma } from '../config/prisma.js';
+import { resolveSafeAvatarUrl } from '../config/preset-avatars.js';
+import { assertNoProfanity } from '../utils/profanity-filter.js';
+import { otpService } from './otp.service.js';
+import { settingsService } from './settings.service.js';
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -9,6 +13,13 @@ import {
 
 export class AuthService {
   async register(data: { email: string; password: string; name: string }) {
+    const isAllowed = await settingsService.isRegistrationAllowed();
+    if (!isAllowed) {
+      throw new Error('Tính năng đăng ký tài khoản mới hiện đang tạm đóng theo cài đặt hệ thống.');
+    }
+
+    assertNoProfanity([{ label: 'Tên hiển thị', value: data.name }]);
+
     const existing = await prisma.user.findUnique({
       where: { email: data.email.toLowerCase() },
     });
@@ -49,8 +60,10 @@ export class AuthService {
 
     // Store refresh token
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await prisma.refreshToken.create({
-      data: {
+    await prisma.refreshToken.upsert({
+      where: { token: refreshToken },
+      update: { expiresAt },
+      create: {
         token: refreshToken,
         userId: user.id,
         expiresAt,
@@ -70,7 +83,10 @@ export class AuthService {
     }
 
     if (user.isLocked) {
-      throw new Error('Tài khoản của bạn đã bị khóa bởi quản trị viên');
+      throw Object.assign(new Error('Tài khoản của bạn đã bị khóa bởi quản trị viên'), {
+        statusCode: 403,
+        code: 'ACCOUNT_LOCKED',
+      });
     }
 
     const isMatch = await bcrypt.compare(data.password, user.passwordHash);
@@ -91,8 +107,10 @@ export class AuthService {
     });
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await prisma.refreshToken.create({
-      data: {
+    await prisma.refreshToken.upsert({
+      where: { token: refreshToken },
+      update: { expiresAt },
+      create: {
         token: refreshToken,
         userId: user.id,
         expiresAt,
@@ -151,8 +169,10 @@ export class AuthService {
     });
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await prisma.refreshToken.create({
-      data: {
+    await prisma.refreshToken.upsert({
+      where: { token: newRefreshToken },
+      update: { expiresAt },
+      create: {
         token: newRefreshToken,
         userId: storedToken.user.id,
         expiresAt,
@@ -202,12 +222,22 @@ export class AuthService {
     return user;
   }
 
-  async updateProfile(userId: string, data: { name?: string; avatarUrl?: string }) {
+  async updateProfile(
+    userId: string,
+    data: { name?: string; avatarUrl?: string | null; presetId?: string }
+  ) {
+    assertNoProfanity([{ label: 'Tên hiển thị', value: data.name }]);
+
+    const resolvedAvatar = resolveSafeAvatarUrl({
+      presetId: data.presetId,
+      avatarUrl: data.avatarUrl,
+    });
+
     const updated = await prisma.user.update({
       where: { id: userId },
       data: {
         ...(data.name ? { name: data.name } : {}),
-        ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {}),
+        ...(resolvedAvatar !== undefined ? { avatarUrl: resolvedAvatar } : {}),
       },
       select: {
         id: true,
@@ -219,6 +249,31 @@ export class AuthService {
       },
     });
     return updated;
+  }
+
+  async updateAvatar(
+    userId: string,
+    data: { presetId?: string; avatarUrl?: string | null }
+  ) {
+    const resolvedAvatar = resolveSafeAvatarUrl(data);
+    if (resolvedAvatar === undefined) {
+      throw Object.assign(new Error('Vui lòng chọn ảnh đại diện hoặc cung cấp URL hợp lệ'), {
+        statusCode: 400,
+      });
+    }
+
+    return prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl: resolvedAvatar },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        avatarUrl: true,
+        createdAt: true,
+      },
+    });
   }
 
   async forgotPassword(email: string) {
@@ -262,6 +317,45 @@ export class AuthService {
     return { message: 'Mật khẩu đã được cập nhật thành công.' };
   }
 
+  async resetPasswordWithOtp(data: {
+    email: string;
+    target: string;
+    channel: 'email' | 'phone';
+    otp: string;
+    newPassword: string;
+  }) {
+    // 1. Xác thực OTP
+    await otpService.verifyOtp(data.target, data.channel, data.otp);
+
+    // 2. Tìm người dùng
+    const user = await prisma.user.findUnique({
+      where: { email: data.email.toLowerCase().trim() },
+    });
+    if (!user) {
+      throw new Error('Không tìm thấy tài khoản người dùng tương ứng');
+    }
+
+    // 3. Kiểm tra mật khẩu mới
+    if (!data.newPassword || data.newPassword.length < 6) {
+      throw new Error('Mật khẩu mới phải chứa ít nhất 6 ký tự');
+    }
+
+    // 4. Băm mật khẩu và lưu
+    const passwordHash = await bcrypt.hash(data.newPassword, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    // 5. Thu hồi tất cả refresh token cũ
+    await prisma.refreshToken.updateMany({
+      where: { userId: user.id },
+      data: { revokedAt: new Date() },
+    });
+
+    return { message: 'Mật khẩu đã được cập nhật thành công! Vui lòng đăng nhập với mật khẩu mới.' };
+  }
+
   async changePassword(userId: string, currentPass: string, newPass: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -292,6 +386,88 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
     return { message: 'Đã đăng xuất khỏi tất cả các thiết bị thành công!' };
+  }
+
+  /**
+   * Gửi yêu cầu hỗ trợ mở khóa tài khoản (lưu vào bảng reports + audit_logs để thông báo cho Admin & Moderator)
+   */
+  async submitLockedAccountSupport(data: { email: string; message: string }) {
+    const email = (data.email || '').toLowerCase().trim();
+    const message = (data.message || '').trim();
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw Object.assign(new Error('Địa chỉ email không hợp lệ'), { statusCode: 400 });
+    }
+    if (message.length < 10 || message.length > 1000) {
+      throw Object.assign(
+        new Error('Vui lòng nhập nội dung hỗ trợ từ 10 đến 1000 ký tự'),
+        { statusCode: 400 }
+      );
+    }
+
+    assertNoProfanity([{ label: 'Nội dung hỗ trợ', value: message }]);
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw Object.assign(new Error('Không tìm thấy tài khoản tương ứng với email này'), {
+        statusCode: 404,
+      });
+    }
+    if (!user.isLocked) {
+      throw Object.assign(new Error('Tài khoản này hiện đang hoạt động, không bị khóa'), {
+        statusCode: 400,
+      });
+    }
+
+    const existingPending = await prisma.report.findFirst({
+      where: {
+        targetType: 'account_appeal',
+        targetId: user.id,
+        status: 'PENDING',
+      },
+    });
+    if (existingPending) {
+      throw Object.assign(
+        new Error(
+          'Bạn đã gửi yêu cầu hỗ trợ đang chờ xử lý. Admin hoặc Moderator sẽ xem xét sớm nhất.'
+        ),
+        { statusCode: 400 }
+      );
+    }
+
+    const report = await prisma.report.create({
+      data: {
+        targetType: 'account_appeal',
+        targetId: user.id,
+        targetTitle: `Hỗ trợ mở khóa tài khoản: ${user.name}`,
+        reason: 'Yêu cầu hỗ trợ mở khóa tài khoản bị khóa',
+        description: message,
+        type: 'OTHER',
+        status: 'PENDING',
+        reporterEmail: user.email,
+        reporterName: user.name,
+        userId: user.id,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        userEmail: user.email,
+        userName: user.name,
+        action: 'ACCOUNT_SUPPORT_REQUEST',
+        targetType: 'USER',
+        targetId: user.id,
+        targetTitle: user.email,
+        details: message,
+      },
+    });
+
+    return {
+      success: true,
+      reportId: report.id,
+      message: 'Đã gửi yêu cầu hỗ trợ tới Admin và Moderator. Vui lòng chờ xét duyệt.',
+    };
   }
 }
 

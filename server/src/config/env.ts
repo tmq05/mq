@@ -44,11 +44,31 @@ const envSchema = z.object({
   SPOTIFY_ENABLED: z.coerce.boolean().default(false),
   SPOTIFY_CLIENT_ID: z.string().optional().default(''),
   SPOTIFY_CLIENT_SECRET: z.string().optional().default(''),
+  SPOTIFY_REDIRECT_URI: z.string().optional().default(''),
 
   ZINGMP3_ENABLED: z.coerce.boolean().default(true),
 
   LRCLIB_ENABLED: z.coerce.boolean().default(true),
   LASTFM_API_KEY: z.string().optional().default(''),
+
+  // OTP Configuration (Gmail & SMS)
+  GMAIL_USER: z.string().optional().default(''),
+  GMAIL_APP_PASSWORD: z.string().optional().default(''),
+  GMAIL_FROM_NAME: z.string().default('mq Music'),
+
+  SMS_PROVIDER: z.enum(['mock', 'twilio', 'speedsms']).default('mock'),
+  TWILIO_ACCOUNT_SID: z.string().optional().default(''),
+  TWILIO_AUTH_TOKEN: z.string().optional().default(''),
+  TWILIO_PHONE_NUMBER: z.string().optional().default(''),
+
+  SPEEDSMS_API_KEY: z.string().optional().default(''),
+  SPEEDSMS_SENDER: z.string().optional().default(''),
+
+  // Gemini AI Assistant Configuration (Server-only)
+  GEMINI_API_KEY: z.string().optional().default(''),
+  GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
+  CHAT_MODEL: z.string().default('gemini-2.0-flash'),
+  CHAT_FAST_MODEL: z.string().default('gemini-2.0-flash-lite'),
 });
 
 const parsed = envSchema.safeParse(process.env);

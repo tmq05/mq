@@ -1,0 +1,158 @@
+/* ==========================================================================
+   iOS Segmented Control Navigation — Biến CSS cấu hình (Design Tokens)
+   Dễ dàng tinh chỉnh màu sắc, bo góc, padding, bóng đổ và thời lượng tại đây.
+   ========================================================================== */
+
+.seg-nav {
+  /* Kích thước & Bo góc */
+  --seg-radius: 9999px;
+  --seg-padding: 4px;
+  --seg-tab-padding-x: 12px;
+  --seg-tab-height: 30px;
+  --seg-font-size: 13px;
+
+  /* Thời lượng & Easing */
+  --seg-duration-thumb: 350ms;
+  --seg-duration-text: 200ms;
+  --seg-easing: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Giao diện Sáng (Light Mode) */
+  --seg-track-bg: rgba(0, 0, 0, 0.055);
+  --seg-track-border: rgba(0, 0, 0, 0.06);
+  --seg-thumb-bg: #ffffff;
+  --seg-thumb-border: rgba(0, 0, 0, 0.08);
+  --seg-thumb-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --seg-text-active: #0f172a;
+  --seg-text-inactive: #64748b;
+  --seg-text-hover: #0f172a;
+  --seg-focus-ring: rgba(15, 23, 42, 0.35);
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: var(--seg-padding);
+  border-radius: var(--seg-radius);
+  background: var(--seg-track-bg);
+  border: 1px solid var(--seg-track-border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.seg-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* Giao diện Tối (Dark Mode) — Nền hơi sáng hơn navbar (#121212), thumb sáng hơn track */
+html.dark .seg-nav,
+.dark .seg-nav {
+  --seg-track-bg: rgba(255, 255, 255, 0.08);
+  --seg-track-border: rgba(255, 255, 255, 0.07);
+  --seg-thumb-bg: rgba(255, 255, 255, 0.16);
+  --seg-thumb-border: rgba(255, 255, 255, 0.2);
+  --seg-thumb-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --seg-text-active: #ffffff;
+  --seg-text-inactive: rgba(255, 255, 255, 0.62);
+  --seg-text-hover: rgba(255, 255, 255, 0.92);
+  --seg-focus-ring: rgba(255, 255, 255, 0.45);
+}
+
+/* Khối chứa tương đối bên trong track để đặt thumb */
+.seg-nav__inner {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 2px;
+}
+
+/* Viên thuốc trượt (Thumb) */
+.seg-nav__thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: var(--seg-tab-height);
+  border-radius: var(--seg-radius);
+  background: var(--seg-thumb-bg);
+  border: 1px solid var(--seg-thumb-border);
+  box-shadow: var(--seg-thumb-shadow);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  z-index: 1;
+  will-change: transform, width;
+}
+
+/* Từng Tab */
+.seg-nav__tab {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: var(--seg-tab-height);
+  padding: 0 var(--seg-tab-padding-x);
+  border-radius: var(--seg-radius);
+  font-size: var(--seg-font-size);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--seg-text-inactive);
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+  transition: color var(--seg-duration-text) ease, transform 160ms var(--seg-easing);
+}
+
+/* Kỹ thuật giữ cố định độ rộng bằng pseudo-element ẩn để tránh layout shift */
+.seg-nav__tab-label {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.seg-nav__tab-label::after {
+  content: attr(data-text);
+  height: 0;
+  visibility: hidden;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+  font-weight: 600;
+}
+
+.seg-nav__tab:hover:not([aria-selected="true"]) {
+  color: var(--seg-text-hover);
+}
+
+.seg-nav__tab[aria-selected="true"] {
+  color: var(--seg-text-active);
+  font-weight: 600;
+}
+
+.seg-nav__tab:focus-visible {
+  box-shadow: 0 0 0 2px var(--seg-focus-ring);
+}
+
+/* Kích thước nhỏ gọn cho bộ lọc trong card / biểu đồ */
+.seg-nav--sm {
+  --seg-padding: 3px;
+  --seg-tab-padding-x: 10px;
+  --seg-tab-height: 26px;
+  --seg-font-size: 12px;
+}
+
+/* Tôn trọng prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .seg-nav__tab,
+  .seg-nav__thumb {
+    transition-duration: 0.01ms !important;
+  }
+}

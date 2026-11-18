@@ -1,19 +1,39 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { X, Mic2, AlertCircle } from 'lucide-react';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { api } from '../../api/client.js';
 import { LyricsLine } from '../../types/index.js';
 import { formatArtists, cleanDisplayTitle } from '../../utils/format.js';
+import { MODAL_CONFIG } from '../common/modal.config.js';
+import { Spinner } from '../common/Loading.js';
+
+const SOURCE_LABELS: Record<string, string> = {
+  youtube: 'YouTube Audio',
+  spotify: 'Spotify',
+  zingmp3: 'Zing MP3',
+  audius: 'Audius',
+  jamendo: 'Jamendo',
+  itunes: 'iTunes',
+  deezer: 'Deezer',
+  local: 'Hệ thống',
+  lrclib: 'LRCLIB',
+  curated: 'Curated',
+  ovh: 'Lyrics.ovh',
+  none: 'Không có',
+};
 
 export const LyricsDrawer: React.FC = () => {
   const { currentTrack, currentTime, isLyricsOpen, toggleLyrics, seekTo } = usePlayerStore();
   const [syncedLines, setSyncedLines] = useState<LyricsLine[]>([]);
   const [plainLyrics, setPlainLyrics] = useState<string | null>(null);
+  const [lyricsSource, setLyricsSource] = useState<string>('none');
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
 
   const activeLineRef = useRef<HTMLParagraphElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const shouldReduceMotion = useReducedMotion();
 
   // Enhanced LRC Parser with metadata filtering
   function parseLrc(lrcText: string): LyricsLine[] {
@@ -103,6 +123,7 @@ export const LyricsDrawer: React.FC = () => {
       })
       .then((res) => {
         if (isCancelled) return;
+        setLyricsSource(res.data?.source || 'none');
         if (res.data?.syncedLyrics) {
           const lines = parseLrc(res.data.syncedLyrics);
           setSyncedLines(lines);
@@ -150,34 +171,66 @@ export const LyricsDrawer: React.FC = () => {
     }
   }, [activeIndex]);
 
-  if (!isLyricsOpen) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 top-14 bottom-24 z-30 bg-canvas/98 dark:bg-canvas-dark/98 backdrop-blur-xl flex flex-col p-6 max-w-4xl mx-auto rounded-t-2xl border-t border-hairline dark:border-hairline-dark select-none animate-in fade-in slide-in-from-bottom-6 duration-200">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-hairline dark:border-hairline-dark shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <Mic2 className="w-5 h-5 text-traffic-green shrink-0" />
-          <div className="min-w-0">
-            <h3 className="font-semibold text-base text-neutral-900 dark:text-white truncate">
-              {cleanDisplayTitle(currentTrack?.title)}
-            </h3>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
-              {formatArtists(currentTrack?.artists)}
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={toggleLyrics}
-          className="p-2 rounded-pill hover:bg-surface-soft dark:hover:bg-surface-dark-soft text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
-          title="Đóng (Phím L)"
+    <AnimatePresence>
+      {isLyricsOpen && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Lời bài hát"
+          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 28, scale: 0.985 }}
+          animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+          exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.985 }}
+          transition={{
+            duration: shouldReduceMotion ? 0.14 : 0.28,
+            ease: MODAL_CONFIG.easing,
+          }}
+          className="fixed inset-0 top-14 bottom-24 z-30 bg-canvas/98 dark:bg-canvas-dark/98 backdrop-blur-xl flex flex-col p-6 max-w-4xl mx-auto rounded-t-2xl border-t border-hairline dark:border-hairline-dark select-none shadow-2xl"
         >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+          {/* Header */}
+          <div className="flex items-center justify-between pb-4 border-b border-hairline dark:border-hairline-dark shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Mic2 className="w-5 h-5 text-traffic-green shrink-0" />
+              <div className="min-w-0">
+                <h3 className="font-semibold text-base text-neutral-900 dark:text-white truncate">
+                  {cleanDisplayTitle(currentTrack?.title)}
+                </h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
+                  {formatArtists(currentTrack?.artists)}
+                </p>
+                {currentTrack && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                    <span className="px-2 py-0.5 rounded-full bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark">
+                      Âm thanh:{' '}
+                      <strong className="font-medium text-neutral-800 dark:text-neutral-200">
+                        {SOURCE_LABELS[currentTrack.audioSource || currentTrack.source] ||
+                          currentTrack.audioSource ||
+                          currentTrack.source}
+                      </strong>
+                    </span>
+                    {lyricsSource !== 'none' && (
+                      <span className="px-2 py-0.5 rounded-full bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark">
+                        Lời:{' '}
+                        <strong className="font-medium text-neutral-800 dark:text-neutral-200">
+                          {SOURCE_LABELS[lyricsSource] || lyricsSource}
+                        </strong>
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleLyrics}
+              className="mq-modal-close-btn p-2 rounded-pill hover:bg-surface-soft dark:hover:bg-surface-dark-soft text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
+              title="Đóng (Phím L)"
+              aria-label="Đóng lời bài hát"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
       {/* Content Area */}
       <div
@@ -185,9 +238,14 @@ export const LyricsDrawer: React.FC = () => {
         className="flex-1 overflow-y-auto py-12 px-4 text-center space-y-6 scroll-smooth"
       >
         {isLoading && (
-          <div className="flex flex-col items-center justify-center h-full text-neutral-400 gap-3">
-            <span className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm">Đang tải và đồng bộ lời bài hát...</p>
+          <div role="status" aria-busy="true" className="flex flex-col items-center justify-center h-full text-neutral-400 gap-3">
+            <Spinner size="md" label="Đang tải và đồng bộ lời bài hát" />
+            <p className="text-sm">
+              Đang tải và đồng bộ lời bài hát
+              <span className="mq-loading-dots" aria-hidden="true">
+                <span>.</span><span>.</span><span>.</span>
+              </span>
+            </p>
           </div>
         )}
 
@@ -232,6 +290,8 @@ export const LyricsDrawer: React.FC = () => {
             );
           })}
       </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

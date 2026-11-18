@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { UnifiedTrack } from '../types/index.js';
 import { playerEngine } from '../player-engine/player-engine.js';
 import { api } from '../api/client.js';
+import { useAuthStore } from './auth-store.js';
+import { useListeningHistoryStore } from './listening-history-store.js';
+import { getSaveListeningHistorySetting } from '../utils/privacy-preferences.js';
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
@@ -21,9 +24,11 @@ interface PlayerState {
   isQueueOpen: boolean;
   miniVideoOpen: boolean;
   errorMessage: string | null;
+  autoScrollToNowPlaying: boolean;
+  focusNowPlayingNonce: number;
 
   // Actions
-  playTrack: (track: UnifiedTrack, newQueue?: UnifiedTrack[]) => Promise<void>;
+  playTrack: (track: UnifiedTrack, newQueue?: UnifiedTrack[], startSeconds?: number) => Promise<void>;
   togglePlay: () => void;
   next: () => void;
   previous: () => void;
@@ -39,6 +44,8 @@ interface PlayerState {
   toggleLyrics: () => void;
   toggleQueue: () => void;
   setMiniVideoOpen: (open: boolean) => void;
+  setAutoScrollToNowPlaying: (enabled: boolean) => void;
+  requestFocusNowPlaying: () => void;
 
   // Engine callbacks
   syncTime: (currentTime: number, duration: number) => void;
@@ -46,6 +53,15 @@ interface PlayerState {
   handleTrackEnd: () => void;
   handleError: (errMsg: string) => void;
 }
+
+const getInitialAutoScroll = (): boolean => {
+  try {
+    const val = localStorage.getItem('mq_auto_scroll_now_playing');
+    return val === null ? true : val === 'true';
+  } catch {
+    return true;
+  }
+};
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentTrack: null,
@@ -63,23 +79,26 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isQueueOpen: false,
   miniVideoOpen: false,
   errorMessage: null,
+  autoScrollToNowPlaying: getInitialAutoScroll(),
+  focusNowPlayingNonce: 0,
 
-  playTrack: async (track, newQueue) => {
+  playTrack: async (track, newQueue, startSeconds) => {
     let activeTrack = track;
 
-    // If track doesn't have an exact full-length YouTube embedId, resolve via backend stream-info
+    // Resolve native stream-info from the track's own provider when needed (no cross-source YouTube hijacking)
     if (
-      (!activeTrack.embedId || activeTrack.embedId.length !== 11) &&
-      (activeTrack.source === 'spotify' || activeTrack.source === 'zingmp3' || activeTrack.source === 'local')
+      (activeTrack.source === 'spotify' || activeTrack.source === 'zingmp3') &&
+      !activeTrack.streamUrl
     ) {
       try {
         const streamInfoRes = await api.get(`/songs/${activeTrack.source}/${activeTrack.sourceId}/stream-info`);
-        if (streamInfoRes.data?.embedId) {
+        const info = streamInfoRes.data;
+        if (info && (info.streamUrl || info.previewUrl)) {
           activeTrack = {
             ...activeTrack,
-            playbackType: streamInfoRes.data.playbackType || 'youtube',
-            embedId: streamInfoRes.data.embedId,
-            isFullLength: true,
+            playbackType: info.playbackType || 'audio',
+            streamUrl: info.streamUrl ?? activeTrack.streamUrl,
+            previewUrl: info.previewUrl ?? activeTrack.previewUrl,
           };
         }
       } catch {
@@ -89,14 +108,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { currentTrack, history, volume, isMuted } = get();
 
-    const updatedHistory = currentTrack ? [currentTrack, ...history.slice(0, 30)] : history;
+    const updatedHistory =
+      currentTrack && currentTrack.id !== activeTrack.id
+        ? [currentTrack, ...history.filter((t) => t.id !== currentTrack.id).slice(0, 29)]
+        : history;
     const updatedQueue = newQueue || get().queue;
+
+    const resumeSec =
+      typeof startSeconds === 'number' && startSeconds > 0 ? Math.floor(startSeconds) : 0;
 
     set({
       currentTrack: activeTrack,
       isPlaying: true,
       isBuffering: true,
-      currentTime: 0,
+      currentTime: resumeSec,
       duration: activeTrack.durationMs ? activeTrack.durationMs / 1000 : 0,
       history: updatedHistory,
       queue: updatedQueue.length > 0 ? updatedQueue : [activeTrack],
@@ -106,9 +131,26 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     try {
       await playerEngine.loadTrack(activeTrack, true);
       playerEngine.setVolume(volume, isMuted);
+      if (resumeSec > 0) {
+        window.setTimeout(() => {
+          if (get().currentTrack?.id === activeTrack.id) {
+            playerEngine.seek(resumeSec);
+          }
+        }, 350);
+      }
 
-      // Record play to backend (fire & forget)
-      api.post('/songs/record-play', { track: activeTrack }).catch(() => {});
+      const currentUserId = useAuthStore.getState().user?.id;
+      if (getSaveListeningHistorySetting(currentUserId)) {
+        // Record play to backend (fire & forget)
+        api
+          .post('/songs/record-play', { track: activeTrack })
+          .then(() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('mq:play-recorded'));
+            }
+          })
+          .catch(() => {});
+      }
     } catch (err: any) {
       get().handleError(err.message || 'Lỗi phát bài hát');
     }
@@ -140,15 +182,56 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const currentIndex = queue.findIndex((t) => t.id === currentTrack?.id);
     let nextIndex = currentIndex + 1;
 
-    if (isShuffle) {
-      nextIndex = Math.floor(Math.random() * queue.length);
+    if (isShuffle && queue.length > 1) {
+      const candidates = queue
+        .map((t, idx) => ({ t, idx }))
+        .filter(({ t }) => t.id !== currentTrack?.id);
+      if (candidates.length > 0) {
+        nextIndex = candidates[Math.floor(Math.random() * candidates.length)].idx;
+      }
     }
 
     if (nextIndex >= queue.length) {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
-        set({ isPlaying: false });
+        // Hết danh sách: tự động lấy bài ngẫu nhiên từ /explore (fallback về queue nếu mất mạng)
+        api
+          .get('/explore')
+          .then((res) => {
+            const pool: UnifiedTrack[] = [
+              ...(res.data?.trending || []),
+              ...(res.data?.vietnamese || []),
+            ].filter((t: UnifiedTrack) => t?.id && t.id !== currentTrack?.id);
+
+            if (pool.length > 0) {
+              const randomTrack = pool[Math.floor(Math.random() * pool.length)];
+              const nextQueue = queue.some((t) => t.id === randomTrack.id)
+                ? queue
+                : [...queue, randomTrack];
+              get().playTrack(randomTrack, nextQueue);
+              return;
+            }
+
+            if (queue.length > 1) {
+              const fallbackCandidates = queue.filter((t) => t.id !== currentTrack?.id);
+              const fallbackTrack =
+                fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)] || queue[0];
+              get().playTrack(fallbackTrack);
+            } else {
+              set({ isPlaying: false });
+            }
+          })
+          .catch(() => {
+            if (queue.length > 1) {
+              const fallbackCandidates = queue.filter((t) => t.id !== currentTrack?.id);
+              const fallbackTrack =
+                fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)] || queue[0];
+              get().playTrack(fallbackTrack);
+            } else {
+              set({ isPlaying: false });
+            }
+          });
         return;
       }
     }
@@ -160,21 +243,45 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   previous: () => {
-    const { queue, currentTrack, currentTime } = get();
+    const { queue, history, currentTrack, currentTime, repeatMode } = get();
     // If played more than 3 seconds, restart current track
     if (currentTime > 3) {
       playerEngine.seek(0);
+      set({ currentTime: 0 });
       return;
+    }
+
+    // Ưu tiên phát lại đúng bài đã nghe trước đó trong lịch sử phiên phát
+    if (history.length > 0) {
+      const [prevTrack, ...remainingHistory] = history;
+      if (prevTrack) {
+        set({ history: remainingHistory, currentTrack: null });
+        get().playTrack(prevTrack);
+        return;
+      }
     }
 
     if (queue.length === 0) return;
     const currentIndex = queue.findIndex((t) => t.id === currentTrack?.id);
-    const prevIndex = currentIndex > 0 ? currentIndex - 1 : queue.length - 1;
 
-    const prevTrack = queue[prevIndex];
-    if (prevTrack) {
-      get().playTrack(prevTrack);
+    if (currentIndex > 0) {
+      const prevTrack = queue[currentIndex - 1];
+      if (prevTrack) {
+        get().playTrack(prevTrack);
+      }
+      return;
     }
+
+    if (repeatMode === 'all' && queue.length > 1) {
+      const lastTrack = queue[queue.length - 1];
+      if (lastTrack) {
+        get().playTrack(lastTrack);
+      }
+      return;
+    }
+
+    playerEngine.seek(0);
+    set({ currentTime: 0 });
   },
 
   seekTo: (seconds) => {
@@ -218,11 +325,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   setMiniVideoOpen: (open) => set({ miniVideoOpen: open }),
 
+  setAutoScrollToNowPlaying: (enabled) => {
+    try {
+      localStorage.setItem('mq_auto_scroll_now_playing', String(enabled));
+    } catch {
+      // ignore
+    }
+    set({ autoScrollToNowPlaying: enabled });
+  },
+
+  requestFocusNowPlaying: () =>
+    set((s) => ({ focusNowPlayingNonce: s.focusNowPlayingNonce + 1 })),
+
   syncTime: (currentTime, duration) => {
-    set((s) => ({
+    const state = get();
+    const resolvedDuration = duration > 0 ? duration : state.duration;
+    set({
       currentTime,
-      duration: duration > 0 ? duration : s.duration,
-    }));
+      duration: resolvedDuration,
+    });
+    if (state.isPlaying && state.currentTrack) {
+      const currentUserId = useAuthStore.getState().user?.id;
+      useListeningHistoryStore
+        .getState()
+        .handlePlaybackProgress(state.currentTrack, currentTime, resolvedDuration, currentUserId);
+    }
   },
 
   syncState: (isPlaying, isBuffering) => {

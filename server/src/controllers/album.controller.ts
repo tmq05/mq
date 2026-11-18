@@ -7,51 +7,89 @@ export class AlbumController {
     try {
       const categoryParam = ((req.query.category as string) || 'all').toLowerCase().trim();
 
-      // 1. Fetch DB albums
+      // 1. Fetch DB albums with songs and artist for fallback resolution
       const dbAlbums = await prisma.album.findMany({
         take: 30,
         orderBy: { createdAt: 'desc' },
         include: {
           artist: true,
+          songs: {
+            select: { id: true, title: true, coverUrl: true, embedId: true },
+            take: 10,
+          },
           _count: { select: { songs: true } },
         },
       });
 
-      const formattedDb = dbAlbums.map((album) => ({
-        id: `local:${album.id}`,
-        dbId: album.id,
-        title: album.title,
-        coverUrl: album.coverUrl,
-        releaseDate: album.releaseDate,
-        year: album.releaseDate ? new Date(album.releaseDate).getFullYear() : 2024,
-        artist: album.artist?.name || 'Nhiều nghệ sĩ',
-        artistId: album.artistId ? `local:${album.artistId}` : undefined,
-        tracksCount: album._count?.songs || 0,
-        playCount: 15400000,
-        genre: 'v-pop',
-        category: 'vietnam' as const,
-        isFeatured: true,
-        featuredOrder: 10,
-      }));
+      const formattedDb = dbAlbums.map((album) => {
+        const firstSongCover = album.songs.find((s) => s.coverUrl)?.coverUrl;
+        const firstSongYt = album.songs.find(
+          (s) => typeof s.embedId === 'string' && s.embedId.length === 11
+        );
+        const ytThumb = firstSongYt?.embedId
+          ? `https://i.ytimg.com/vi/${firstSongYt.embedId}/hqdefault.jpg`
+          : undefined;
+        const artistImg = album.artist?.imageUrl;
 
-      // 2. Format catalog albums
-      const formattedCatalog = ALBUMS_CATALOG.map((cat) => ({
-        id: cat.id,
-        dbId: cat.id,
-        title: cat.title,
-        coverUrl: cat.coverUrl,
-        releaseDate: cat.releaseDate,
-        year: cat.year,
-        artist: cat.artist,
-        artistId: cat.artistId,
-        artistSlug: cat.artistSlug,
-        genre: cat.genre,
-        category: cat.category,
-        tracksCount: cat.tracks.length,
-        playCount: cat.playCount,
-        isFeatured: cat.isFeatured,
-        featuredOrder: cat.featuredOrder,
-      }));
+        const resolvedCoverUrl = album.coverUrl || firstSongCover || artistImg || ytThumb || '';
+        const fallbackCoverUrl =
+          (firstSongCover && firstSongCover !== resolvedCoverUrl ? firstSongCover : undefined) ||
+          (artistImg && artistImg !== resolvedCoverUrl ? artistImg : undefined) ||
+          ytThumb;
+
+        return {
+          id: `local:${album.id}`,
+          dbId: album.id,
+          title: album.title,
+          coverUrl: resolvedCoverUrl,
+          fallbackCoverUrl,
+          releaseDate: album.releaseDate,
+          year: album.releaseDate ? new Date(album.releaseDate).getFullYear() : 2024,
+          artist: album.artist?.name || 'Nhiều nghệ sĩ',
+          artistId: album.artistId ? `local:${album.artistId}` : undefined,
+          tracksCount: album._count?.songs || album.songs.length || 0,
+          playCount: 15400000,
+          genre: 'v-pop',
+          category: 'vietnam' as const,
+          isFeatured: true,
+          featuredOrder: 10,
+        };
+      });
+
+      // 2. Format catalog albums with fallback chain
+      const formattedCatalog = ALBUMS_CATALOG.map((cat) => {
+        const firstTrackWithCover = cat.tracks.find(
+          (t) => t.coverUrl && t.coverUrl !== cat.coverUrl
+        )?.coverUrl;
+        const firstTrackYt = cat.tracks.find(
+          (t) => typeof t.embedId === 'string' && t.embedId.length === 11
+        );
+        const ytFallback = firstTrackYt?.embedId
+          ? `https://i.ytimg.com/vi/${firstTrackYt.embedId}/hqdefault.jpg`
+          : undefined;
+
+        const resolvedCoverUrl = cat.coverUrl || firstTrackWithCover || ytFallback || '';
+        const fallbackCoverUrl = firstTrackWithCover || ytFallback;
+
+        return {
+          id: cat.id,
+          dbId: cat.id,
+          title: cat.title,
+          coverUrl: resolvedCoverUrl,
+          fallbackCoverUrl,
+          releaseDate: cat.releaseDate,
+          year: cat.year,
+          artist: cat.artist,
+          artistId: cat.artistId,
+          artistSlug: cat.artistSlug,
+          genre: cat.genre,
+          category: cat.category,
+          tracksCount: cat.tracks.length,
+          playCount: cat.playCount,
+          isFeatured: cat.isFeatured,
+          featuredOrder: cat.featuredOrder,
+        };
+      });
 
       // 3. Merge: Catalog first, then DB albums that aren't duplicate titles
       const catalogTitles = new Set(formattedCatalog.map((a) => a.title.toLowerCase().trim()));
@@ -124,10 +162,21 @@ export class AlbumController {
           };
         });
 
+        const firstTrackYt = catalogAlbum.tracks.find(
+          (t) => typeof t.embedId === 'string' && t.embedId.length === 11
+        );
+        const ytFallback = firstTrackYt?.embedId
+          ? `https://i.ytimg.com/vi/${firstTrackYt.embedId}/hqdefault.jpg`
+          : undefined;
+        const fallbackCoverUrl =
+          catalogAlbum.tracks.find((t) => t.coverUrl && t.coverUrl !== catalogAlbum.coverUrl)?.coverUrl ||
+          ytFallback;
+
         res.json({
           id: catalogAlbum.id,
           title: catalogAlbum.title,
-          coverUrl: catalogAlbum.coverUrl,
+          coverUrl: catalogAlbum.coverUrl || fallbackCoverUrl,
+          fallbackCoverUrl,
           releaseDate: catalogAlbum.releaseDate,
           year: catalogAlbum.year,
           artist: catalogAlbum.artist,
@@ -158,6 +207,21 @@ export class AlbumController {
         return;
       }
 
+      const firstSongCover = album.songs.find((s) => s.coverUrl)?.coverUrl;
+      const firstSongYt = album.songs.find(
+        (s) => typeof s.embedId === 'string' && s.embedId.length === 11
+      );
+      const ytThumb = firstSongYt?.embedId
+        ? `https://i.ytimg.com/vi/${firstSongYt.embedId}/hqdefault.jpg`
+        : undefined;
+      const artistImg = album.artist?.imageUrl;
+
+      const resolvedCoverUrl = album.coverUrl || firstSongCover || artistImg || ytThumb || '';
+      const fallbackCoverUrl =
+        (firstSongCover && firstSongCover !== resolvedCoverUrl ? firstSongCover : undefined) ||
+        (artistImg && artistImg !== resolvedCoverUrl ? artistImg : undefined) ||
+        ytThumb;
+
       const formattedSongs = album.songs.map((s) => ({
         id: `local:${s.id}`,
         dbId: s.id,
@@ -166,7 +230,7 @@ export class AlbumController {
         title: s.title,
         artists: s.artists,
         album: album.title,
-        coverUrl: s.coverUrl || album.coverUrl,
+        coverUrl: s.coverUrl || resolvedCoverUrl,
         durationMs: s.durationMs,
         playbackType: s.playbackType,
         streamUrl: s.streamUrl || `/api/songs/${s.id}/stream`,
@@ -178,7 +242,8 @@ export class AlbumController {
       res.json({
         id: `local:${album.id}`,
         title: album.title,
-        coverUrl: album.coverUrl,
+        coverUrl: resolvedCoverUrl,
+        fallbackCoverUrl,
         releaseDate: album.releaseDate,
         artist: album.artist?.name || 'Various Artists',
         tracksCount: formattedSongs.length,

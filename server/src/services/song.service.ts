@@ -8,40 +8,61 @@ export class SongService {
    * Does NOT download or store external audio files.
    */
   async upsertSong(track: UnifiedTrack) {
-    const isLocal = track.source === 'local';
+    const rawId = track.id || '';
+    const colonIdx = rawId.indexOf(':');
+    const inferredSource = colonIdx > 0 ? rawId.slice(0, colonIdx) : 'local';
+    const inferredSourceId = colonIdx > 0 ? rawId.slice(colonIdx + 1) : rawId;
+
+    const source = track.source || inferredSource;
+    const sourceId = track.sourceId || inferredSourceId;
+    const artists = Array.isArray(track.artists) ? track.artists : [];
+    const durationMs = Number.isFinite(Number(track.durationMs)) ? Number(track.durationMs) : 0;
+    const playbackType = track.playbackType || 'stream';
+    const isFullLength = track.isFullLength ?? true;
+
+    const isLocal = source === 'local';
+    if (isLocal && (track as any).dbId) {
+      const existingById = await prisma.song.findUnique({ where: { id: (track as any).dbId } });
+      if (existingById) return existingById;
+    }
+    if (isLocal && sourceId) {
+      const existingById = await prisma.song.findUnique({ where: { id: sourceId } });
+      if (existingById) return existingById;
+    }
+
     const streamUrlToSave = isLocal ? track.streamUrl : undefined;
 
     return prisma.song.upsert({
       where: {
         source_sourceId: {
-          source: track.source,
-          sourceId: track.sourceId,
+          source,
+          sourceId,
         },
       },
       update: {
-        title: track.title,
-        artists: track.artists,
+        title: track.title || 'Không rõ tên bài hát',
+        artists,
         album: track.album || undefined,
         coverUrl: track.coverUrl || undefined,
-        durationMs: track.durationMs,
-        playbackType: track.playbackType,
+        durationMs,
+        playbackType,
         embedId: track.embedId || undefined,
         previewUrl: track.previewUrl || undefined,
-        isFullLength: track.isFullLength,
+        isFullLength,
       },
       create: {
-        source: track.source,
-        sourceId: track.sourceId,
-        title: track.title,
-        artists: track.artists,
+        source,
+        sourceId,
+        title: track.title || 'Không rõ tên bài hát',
+        artists,
         album: track.album || undefined,
         coverUrl: track.coverUrl || undefined,
-        durationMs: track.durationMs,
-        playbackType: track.playbackType,
+        durationMs,
+        playbackType,
         streamUrl: streamUrlToSave,
         embedId: track.embedId || undefined,
         previewUrl: track.previewUrl || undefined,
-        isFullLength: track.isFullLength,
+        isFullLength,
       },
     });
   }
@@ -136,8 +157,14 @@ export class SongService {
       data: { playCount: { increment: 1 } },
     });
 
-    // Record history if user is logged in
+    // Record history if user is logged in (giữ mỗi bài hát chỉ xuất hiện 1 lần ở vị trí mới nhất)
     if (userId) {
+      await prisma.playHistory.deleteMany({
+        where: {
+          userId,
+          songId: dbSong.id,
+        },
+      });
       await prisma.playHistory.create({
         data: {
           userId,
@@ -178,26 +205,42 @@ export class SongService {
       where: { userId },
       include: { song: true },
       orderBy: { playedAt: 'desc' },
-      take: 50,
+      take: 150,
     });
 
-    return histories.map((h) => ({
-      id: h.song.source === 'local' ? `local:${h.song.id}` : `${h.song.source}:${h.song.sourceId}`,
-      dbId: h.song.id,
-      source: h.song.source,
-      sourceId: h.song.sourceId,
-      title: h.song.title,
-      artists: h.song.artists,
-      album: h.song.album,
-      coverUrl: h.song.coverUrl,
-      durationMs: h.song.durationMs,
-      playbackType: h.song.playbackType,
-      streamUrl: h.song.streamUrl,
-      embedId: h.song.embedId,
-      previewUrl: h.song.previewUrl,
-      isFullLength: h.song.isFullLength,
-      playedAt: h.playedAt,
-    }));
+    const seenSongIds = new Set<string>();
+    const seenTrackKeys = new Set<string>();
+    const uniqueHistories = [];
+
+    for (const h of histories) {
+      if (seenSongIds.has(h.songId)) continue;
+      const trackKey = `${h.song.title.trim().toLowerCase()}::${(h.song.artists[0] || '').trim().toLowerCase()}`;
+      if (seenTrackKeys.has(trackKey)) continue;
+
+      seenSongIds.add(h.songId);
+      seenTrackKeys.add(trackKey);
+      uniqueHistories.push({
+        id: h.song.source === 'local' ? `local:${h.song.id}` : `${h.song.source}:${h.song.sourceId}`,
+        dbId: h.song.id,
+        source: h.song.source,
+        sourceId: h.song.sourceId,
+        title: h.song.title,
+        artists: h.song.artists,
+        album: h.song.album,
+        coverUrl: h.song.coverUrl,
+        durationMs: h.song.durationMs,
+        playbackType: h.song.playbackType,
+        streamUrl: h.song.streamUrl,
+        embedId: h.song.embedId,
+        previewUrl: h.song.previewUrl,
+        isFullLength: h.song.isFullLength,
+        playedAt: h.playedAt,
+      });
+
+      if (uniqueHistories.length >= 50) break;
+    }
+
+    return uniqueHistories;
   }
 }
 

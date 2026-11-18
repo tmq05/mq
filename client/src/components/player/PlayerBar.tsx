@@ -1,28 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { Spinner } from '../common/Loading.js';
 import {
   Play,
   Pause,
   SkipBack,
   SkipForward,
-  Shuffle,
-  Repeat,
-  Repeat1,
   Volume2,
   VolumeX,
   ListMusic,
   Mic2,
   Tv,
-  Heart,
   Plus,
 } from 'lucide-react';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { useAuthStore } from '../../stores/auth-store.js';
+import { useAuthModalStore } from '../../stores/auth-modal-store.js';
 import { usePlaylistModalStore } from '../../stores/playlist-modal-store.js';
-import { api } from '../../api/client.js';
+import { useLikesStore } from '../../stores/likes-store.js';
 import { formatDuration, formatArtists, cleanDisplayTitle } from '../../utils/format.js';
 import { SourceBadge } from '../common/Badge.js';
+import { NOW_PLAYING_CONFIG } from './now-playing.config.js';
+import {
+  AnimatedHeartIcon,
+  RepeatControlButton,
+  ShuffleControlButton,
+} from '../common/ActionButtonFX.js';
 
 export const PlayerBar: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const shouldReduceMotion = useReducedMotion();
+
   const {
     currentTrack,
     isPlaying,
@@ -47,42 +59,18 @@ export const PlayerBar: React.FC = () => {
     toggleLyrics,
     toggleQueue,
     setMiniVideoOpen,
+    requestFocusNowPlaying,
   } = usePlayerStore();
 
   const { isAuthenticated } = useAuthStore();
+  const { openAuthModal } = useAuthModalStore();
   const { openModal: openPlaylistModal } = usePlaylistModalStore();
 
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isLiking, setIsLiking] = useState(false);
-
-  // Check like status whenever currentTrack changes
-  useEffect(() => {
-    let isCancelled = false;
-    if (isAuthenticated && currentTrack?.id) {
-      api
-        .get('/users/likes')
-        .then((res) => {
-          if (isCancelled) return;
-          const likes: any[] = res.data?.likes || [];
-          const found = likes.some(
-            (l) => l.id === currentTrack.id || l.sourceId === currentTrack.sourceId
-          );
-          setIsLiked(found);
-        })
-        .catch(() => {});
-    } else {
-      setIsLiked(false);
-    }
-    return () => {
-      isCancelled = true;
-    };
-  }, [currentTrack?.id, isAuthenticated]);
-
-  if (!currentTrack) {
-    return null;
-  }
+  const isLiked = useLikesStore((s) => s.isTrackLiked(currentTrack));
+  const isLiking = useLikesStore((s) => s.isTrackPending(currentTrack));
+  const toggleLike = useLikesStore((s) => s.toggleLike);
 
   const effectiveTime = isSeeking ? seekValue : currentTime;
   const progressPercent = duration > 0 ? (effectiveTime / duration) * 100 : 0;
@@ -108,69 +96,117 @@ export const PlayerBar: React.FC = () => {
   };
 
   const handleToggleLike = async () => {
+    if (!currentTrack) return;
     if (!isAuthenticated) {
-      alert('Vui lòng đăng nhập để lưu bài hát yêu thích');
+      openAuthModal({
+        title: 'Lưu bài hát yêu thích',
+        message: currentTrack?.title
+          ? `Đăng nhập để lưu "${cleanDisplayTitle(currentTrack.title)}" vào danh sách yêu thích.`
+          : 'Đăng nhập để lưu bài hát này vào danh sách yêu thích của bạn.',
+        iconType: 'heart',
+      });
       return;
     }
     if (isLiking) return;
-    setIsLiking(true);
-    try {
-      const res = await api.post('/songs/like', { track: currentTrack });
-      setIsLiked(res.data?.isLiked ?? !isLiked);
-    } catch (err) {
-      console.error('Like toggle error', err);
-    } finally {
-      setIsLiking(false);
+    await toggleLike(currentTrack);
+    queryClient.invalidateQueries({ queryKey: ['user-likes'] });
+    queryClient.invalidateQueries({ queryKey: ['user-stats'] });
+  };
+
+  const handleFocusNowPlaying = () => {
+    requestFocusNowPlaying();
+    if (location.pathname !== '/') {
+      navigate('/');
     }
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-canvas/95 dark:bg-canvas-dark/95 backdrop-blur-md border-t border-hairline dark:border-hairline-dark px-4 py-2.5 select-none transition-all">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        {/* Left: Track Info + Quick Like/Playlist */}
-        <div className="flex items-center gap-3 w-1/4 min-w-[220px]">
-          <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-surface-soft shrink-0 border border-hairline dark:border-hairline-dark">
-            <img
-              src={
-                currentTrack.coverUrl ||
-                'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100&auto=format&fit=crop&q=80'
-              }
-              alt={currentTrack.title}
-              className="w-full h-full object-cover"
-            />
-            {isBuffering && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-          </div>
+    <AnimatePresence>
+      {currentTrack && (
+        <motion.div
+          key="player-bar"
+          initial={shouldReduceMotion ? { opacity: 0 } : { y: '100%', opacity: 0 }}
+          animate={{
+            y: 0,
+            opacity: 1,
+            transition: shouldReduceMotion
+              ? { duration: 0.15 }
+              : {
+                  duration: NOW_PLAYING_CONFIG.durationPlayerBarMs / 1000,
+                  ease: NOW_PLAYING_CONFIG.easing,
+                },
+          }}
+          exit={
+            shouldReduceMotion
+              ? { opacity: 0 }
+              : {
+                  y: '100%',
+                  opacity: 0,
+                  transition: { duration: 0.22, ease: NOW_PLAYING_CONFIG.easing },
+                }
+          }
+          className="fixed bottom-0 left-0 right-0 z-40 bg-canvas/95 dark:bg-canvas-dark/95 backdrop-blur-md border-t border-hairline dark:border-hairline-dark px-4 py-2.5 select-none"
+        >
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            {/* Left: Track Info (bấm ảnh bìa hoặc tên bài để cuộn lên khung Đang phát) + Quick Like/Playlist */}
+            <div className="flex items-center gap-3 w-1/4 min-w-[220px]">
+              <button
+                type="button"
+                onClick={handleFocusNowPlaying}
+                className="flex items-center gap-3 min-w-0 text-left group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-traffic-green rounded-lg"
+                title="Xem khung Đang phát"
+              >
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-surface-soft shrink-0 border border-hairline dark:border-hairline-dark group-hover:scale-105 transition-transform">
+                  <img
+                    src={
+                      currentTrack.coverUrl ||
+                      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100&auto=format&fit=crop&q=80'
+                    }
+                    alt={currentTrack.title}
+                    className="w-full h-full object-cover"
+                  />
+                  {isBuffering && (
+                    <div className="absolute inset-0 bg-black/45 flex items-center justify-center">
+                      <Spinner size="sm" label="Đang tải bài hát" />
+                    </div>
+                  )}
+                </div>
 
-          <div className="flex flex-col min-w-0 pr-1">
-            <span className="text-sm font-semibold truncate text-neutral-900 dark:text-white">
-              {cleanDisplayTitle(currentTrack.title)}
-            </span>
-            <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate">
-              {formatArtists(currentTrack.artists)}
-            </span>
-            <div className="mt-0.5">
-              <SourceBadge isFullLength={currentTrack.isFullLength} source={currentTrack.source} />
-            </div>
-          </div>
+                <div className="flex flex-col min-w-0 pr-1">
+                  <span className="text-sm font-semibold truncate text-neutral-900 dark:text-white group-hover:underline">
+                    {cleanDisplayTitle(currentTrack.title)}
+                  </span>
+                  <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate">
+                    {formatArtists(currentTrack.artists)}
+                  </span>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <SourceBadge
+                      isFullLength={currentTrack.isFullLength}
+                      source={currentTrack.audioSource || currentTrack.source}
+                    />
+                    {currentTrack.audioSource && currentTrack.audioSource !== currentTrack.source && (
+                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
+                        ({currentTrack.source})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
 
           {/* Quick Actions: Favorite + Add to Playlist */}
           <div className="flex items-center gap-0.5 shrink-0 ml-auto">
             <button
               onClick={handleToggleLike}
               disabled={isLiking}
-              className={`p-1.5 rounded-pill transition-all active:scale-90 ${
+              className={`p-1.5 rounded-pill transition-all active:scale-90 cursor-pointer ${
                 isLiked
-                  ? 'text-red-500 fill-red-500 hover:text-red-600'
+                  ? 'text-red-500 hover:text-red-600'
                   : 'text-neutral-400 hover:text-black dark:hover:text-white'
               }`}
               title={isLiked ? 'Bỏ thích bài hát' : 'Yêu thích bài hát'}
               aria-label="Thích bài hát"
             >
-              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+              <AnimatedHeartIcon liked={isLiked} className="w-4 h-4" />
             </button>
             <button
               onClick={() => openPlaylistModal(currentTrack)}
@@ -187,17 +223,7 @@ export const PlayerBar: React.FC = () => {
         <div className="flex flex-col items-center max-w-xl w-2/4">
           <div className="flex items-center gap-3 mb-1.5">
             {/* Shuffle */}
-            <button
-              onClick={toggleShuffle}
-              className={`p-1.5 rounded-pill transition-colors ${
-                isShuffle
-                  ? 'text-black dark:text-white font-bold'
-                  : 'text-neutral-400 hover:text-black dark:hover:text-white'
-              }`}
-              title="Phát ngẫu nhiên"
-            >
-              <Shuffle className="w-4 h-4" />
-            </button>
+            <ShuffleControlButton active={isShuffle} onClick={toggleShuffle} size="sm" />
 
             {/* Previous */}
             <button
@@ -231,21 +257,7 @@ export const PlayerBar: React.FC = () => {
             </button>
 
             {/* Repeat */}
-            <button
-              onClick={handleRepeatClick}
-              className={`p-1.5 rounded-pill transition-colors ${
-                repeatMode !== 'off'
-                  ? 'text-black dark:text-white font-bold'
-                  : 'text-neutral-400 hover:text-black dark:hover:text-white'
-              }`}
-              title={`Lặp lại: ${repeatMode}`}
-            >
-              {repeatMode === 'one' ? (
-                <Repeat1 className="w-4 h-4" />
-              ) : (
-                <Repeat className="w-4 h-4" />
-              )}
-            </button>
+            <RepeatControlButton mode={repeatMode} onClick={handleRepeatClick} size="sm" />
           </div>
 
           {/* Progress Slider */}
@@ -353,6 +365,8 @@ export const PlayerBar: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

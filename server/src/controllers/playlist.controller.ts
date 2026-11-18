@@ -9,7 +9,9 @@ export class PlaylistController {
         res.status(401).json({ message: 'Vui lòng đăng nhập' });
         return;
       }
-      const playlist = await playlistService.createPlaylist(req.user.userId, req.body);
+      const playlist = await playlistService.createPlaylist(req.user.userId, req.body, {
+        requireMinTracks: true,
+      });
       res.status(201).json(playlist);
     } catch (err) {
       next(err);
@@ -96,6 +98,17 @@ export class PlaylistController {
         return;
       }
       const playlists = await playlistService.getUserPlaylists(req.user.userId);
+      res.json({ playlists });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getPublicPlaylists(req: Request, res: Response, next: NextFunction) {
+    try {
+      const pinnedOnly = req.query.pinned === 'true';
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20;
+      const playlists = await playlistService.getPublicPlaylists({ pinnedOnly, limit });
       res.json({ playlists });
     } catch (err) {
       next(err);

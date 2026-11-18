@@ -21,6 +21,7 @@ export interface UnifiedTrack {
   coverUrl?: string;
   durationMs: number;
   playbackType: PlaybackType;
+  audioSource?: MusicSource;
   streamUrl?: string;
   embedId?: string; // YouTube video ID
   previewUrl?: string;
@@ -35,6 +36,7 @@ export interface UnifiedArtist {
   name: string;
   imageUrl?: string;
   bio?: string;
+  followersCount?: number;
 }
 
 export interface UnifiedAlbum {
@@ -65,7 +67,7 @@ export interface User {
   bio?: string;
   location?: string;
   birthDate?: string;
-  role: 'USER' | 'ADMIN';
+  role: 'USER' | 'MODERATOR' | 'ADMIN';
   avatarUrl?: string;
   isLocked?: boolean;
   createdAt: string;
@@ -77,12 +79,16 @@ export interface Playlist {
   description?: string;
   coverUrl?: string;
   isPublic: boolean;
+  isPinned?: boolean;
+  isBanned?: boolean;
   userId: string;
   tracks?: UnifiedTrack[];
   _count?: { songs: number };
+  user?: { id: string; name: string; email: string; avatarUrl?: string };
   createdAt: string;
   updatedAt: string;
 }
+
 
 export interface Genre {
   id: string;
@@ -102,6 +108,7 @@ export interface Album {
   dbId?: string;
   title: string;
   coverUrl?: string;
+  fallbackCoverUrl?: string;
   releaseDate?: string;
   year?: number;
   artist?: string | { id?: string; name: string };

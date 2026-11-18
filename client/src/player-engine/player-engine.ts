@@ -1,8 +1,10 @@
 import { PlayerAdapter } from './player-adapter.interface.js';
 import { HtmlAudioAdapter } from './adapters/html-audio-adapter.js';
 import { YouTubeAdapter } from './adapters/youtube-adapter.js';
+import { SpotifySdkAdapter } from './adapters/spotify-sdk-adapter.js';
 import { UnifiedTrack } from '../types/index.js';
 import { usePlayerStore } from '../stores/player-store.js';
+import { useSpotifyAuthStore } from '../stores/spotify-auth-store.js';
 
 export class PlayerEngine {
   private currentAdapter: PlayerAdapter | null = null;
@@ -32,38 +34,79 @@ export class PlayerEngine {
       return new YouTubeAdapter(events);
     }
 
+    if (type === 'spotify') {
+      return new SpotifySdkAdapter(events);
+    }
+
     return new HtmlAudioAdapter(events);
   }
 
   async loadTrack(track: UnifiedTrack, autoPlay = true): Promise<void> {
-    // 1. Check if track already has an 11-char YouTube embedId for full-length playback
-    let isYouTube = Boolean(
-      (track.embedId && track.embedId.length === 11) ||
-      (track.playbackType === 'youtube' && track.sourceId && track.sourceId.length === 11)
+    const spotifyAuth = useSpotifyAuthStore.getState();
+    const canUseSpotifySdk = Boolean(
+      track.source === 'spotify' && spotifyAuth.accessToken && spotifyAuth.user?.isPremium
     );
 
-    // 2. If it does not have an 11-char YouTube ID, resolve dynamically
-    if (!isYouTube && track.title) {
-      try {
-        const artist = track.artists?.[0] || '';
-        const res = await fetch(
-          `/api/songs/resolve-full?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(artist)}&id=${encodeURIComponent(track.id || '')}`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.videoId && data.videoId.length === 11) {
-            track.embedId = data.videoId;
-            track.playbackType = 'youtube';
-            track.isFullLength = true;
-            isYouTube = true;
+    let targetType: 'audio' | 'youtube' | 'spotify' | 'zingmp3' = 'audio';
+
+    if (canUseSpotifySdk) {
+      targetType = 'spotify';
+      track.audioSource = 'spotify';
+      track.isFullLength = true;
+    } else {
+      const hasNativeFullAudio =
+        track.source === 'audius' ||
+        track.source === 'jamendo' ||
+        (track.source === 'local' && Boolean(track.streamUrl));
+
+      let isYouTube = Boolean(
+        (track.embedId && track.embedId.length === 11) ||
+        (track.source === 'youtube' && track.sourceId && track.sourceId.length === 11)
+      );
+
+      // Resolve duration-matched YouTube Official Audio when the track has no native full-length stream
+      if (!hasNativeFullAudio && !isYouTube && track.title) {
+        try {
+          const artist = track.artists?.[0] || '';
+          const res = await fetch(
+            `/api/songs/resolve-full?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(artist)}&id=${encodeURIComponent(track.id || '')}&durationMs=${track.durationMs || 0}`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.videoId && data.videoId.length === 11) {
+              track.embedId = data.videoId;
+              track.playbackType = 'youtube';
+              track.isFullLength = true;
+              track.audioSource = 'youtube';
+              isYouTube = true;
+            }
           }
+        } catch (err) {
+          console.warn('Could not dynamically resolve full track', err);
         }
-      } catch (err) {
-        console.warn('Could not dynamically resolve full track', err);
+      } else if (isYouTube) {
+        track.audioSource = 'youtube';
+      } else {
+        track.audioSource = track.source;
       }
+
+      targetType = isYouTube ? 'youtube' : 'audio';
     }
 
-    const targetType: 'audio' | 'youtube' | 'spotify' | 'zingmp3' = isYouTube ? 'youtube' : 'audio';
+    // Sync resolved audioSource to player store so UI badges stay transparent
+    usePlayerStore.setState((state) =>
+      state.currentTrack?.id === track.id
+        ? {
+            currentTrack: {
+              ...state.currentTrack,
+              audioSource: track.audioSource,
+              playbackType: track.playbackType,
+              embedId: track.embedId,
+              isFullLength: track.isFullLength,
+            },
+          }
+        : {}
+    );
 
     // If adapter type changed, clean up previous adapter completely
     if (!this.currentAdapter || this.currentAdapter.type !== targetType) {

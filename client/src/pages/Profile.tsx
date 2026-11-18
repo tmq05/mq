@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   User as UserIcon,
   Music2,
   ShieldCheck,
   KeyRound,
   Camera,
+  LayoutGrid,
   Trash2,
   ChevronDown,
-  ChevronUp,
   Check,
   AlertCircle,
   Eye,
@@ -28,15 +31,70 @@ import {
   Sparkles,
   SlidersHorizontal,
   LogOut,
+  Droplets,
+  CloudRain,
+  Flame,
+  VolumeX,
+  Edit3,
+  Globe,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/auth-store.js';
 import { useThemeStore } from '../stores/theme-store.js';
+import { usePlayerStore } from '../stores/player-store.js';
 import { Button } from '../components/common/Button.js';
+import { SongRow } from '../components/song/SongRow.js';
 import { UserAvatar } from '../components/common/UserAvatar.js';
+import type { Playlist, UnifiedTrack } from '../types/index.js';
 import { AvatarCropModal } from '../components/profile/AvatarCropModal.js';
+import { AvatarPickerModal } from '../components/profile/AvatarPickerModal.js';
+import type { PresetAvatar } from '../data/presetAvatars.js';
+import { ThemeSwitch } from '../components/pinui/ThemeSwitch.js';
+import { SegmentedTabs, SegmentedTabContent, useTabDirection } from '../components/layout/SegmentedTabs.js';
 import { api } from '../api/client.js';
+import { ProfileEnhancementBoundary } from '../components/profile/ProfileEnhancementBoundary.js';
+import { useProfileInsights } from '../components/profile/useProfileInsights.js';
+import { ProfileHeaderExtras } from '../components/profile/ProfileHeaderExtras.js';
+import { ProfileCompletenessCard } from '../components/profile/ProfileCompletenessCard.js';
+import { ProfileExtendedStats } from '../components/profile/ProfileExtendedStats.js';
+import { ListeningChartPanel } from '../components/profile/ListeningChartPanel.js';
+import { PlaylistCreateTrigger, PlaylistCoverCollage } from '../components/profile/PlaylistCreateInline.js';
+import { UnfollowArtistButton, UnlikeTrackButton } from '../components/profile/ProfileListActions.js';
+import { ProfileInsightPanels } from '../components/profile/ProfileInsightPanels.js';
+import { ProfileAchievementsSection } from '../components/profile/ProfileAchievementsSection.js';
+import { Modal } from '../components/common/Modal.js';
 
-type TabType = 'personal' | 'music' | 'privacy' | 'security';
+type TabType = 'personal' | 'music' | 'privacy' | 'security' | 'theme';
+type ProfileSectionType =
+  | 'playlists'
+  | 'likes'
+  | 'following'
+  | 'listening'
+  | 'history'
+  | 'streak'
+  | 'top-artists'
+  | 'top-genres'
+  | 'edit';
+
+const PROFILE_SECTION_TABS: Array<{ id: ProfileSectionType }> = [
+  { id: 'playlists' },
+  { id: 'likes' },
+  { id: 'following' },
+  { id: 'listening' },
+  { id: 'history' },
+  { id: 'streak' },
+  { id: 'top-artists' },
+  { id: 'top-genres' },
+  { id: 'edit' },
+];
+
+const PROFILE_TABS = [
+  { id: 'personal', label: 'Thông tin', icon: <UserIcon className="w-3.5 h-3.5" /> },
+  { id: 'music', label: 'Âm nhạc', icon: <Music2 className="w-3.5 h-3.5" /> },
+  { id: 'privacy', label: 'Quyền riêng tư', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+  { id: 'security', label: 'Bảo mật', icon: <KeyRound className="w-3.5 h-3.5" /> },
+  { id: 'theme', label: 'Giao diện & Hiệu ứng', icon: <Sparkles className="w-3.5 h-3.5 text-amber-500" /> },
+];
 type AudioQuality = 'auto' | 'high' | 'saver';
 
 interface UserPreferences {
@@ -50,6 +108,7 @@ interface UserPreferences {
   publicPlaylists: boolean;
   publicHistory: boolean;
   showListeningStatus: boolean;
+  saveListeningHistory?: boolean;
 }
 
 interface UserStats {
@@ -76,11 +135,59 @@ const AVAILABLE_GENRES = [
 
 export const ProfilePage: React.FC = () => {
   const { user, updateUser } = useAuthStore();
-  const { isDark } = useThemeStore();
+  const { isDark, setTheme, effect, setEffect, sound, setSound } = useThemeStore();
+  const { autoScrollToNowPlaying, setAutoScrollToNowPlaying } = usePlayerStore();
 
+  const [profileSection, setProfileSection] = useState<ProfileSectionType>('playlists');
+  const sectionDirection = useTabDirection(PROFILE_SECTION_TABS, profileSection);
+  const {
+    data: insights,
+    isLoading: isInsightsLoading,
+    isError: isInsightsError,
+    refetch: refetchInsights,
+  } = useProfileInsights(user?.id);
+  const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
+  const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
+  const [selectedBadgeId, setSelectedBadgeId] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('personal');
+  const tabDirection = useTabDirection(PROFILE_TABS, activeTab);
+  const shouldReduceMotion = useReducedMotion();
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const { data: profilePlaylists, isLoading: isLoadingPlaylists } = useQuery({
+    queryKey: ['profile-playlists', user?.id],
+    queryFn: async () => {
+      const res = await api.get('/users/playlists');
+      return (res.data?.playlists || []) as Playlist[];
+    },
+    enabled: Boolean(user?.id) && profileSection === 'playlists',
+  });
+
+  const { data: profileLikes, isLoading: isLoadingLikes } = useQuery({
+    queryKey: ['profile-likes', user?.id],
+    queryFn: async () => {
+      const res = await api.get('/users/likes');
+      return (res.data?.likes || []) as UnifiedTrack[];
+    },
+    enabled: Boolean(user?.id) && profileSection === 'likes',
+  });
+
+  const { data: profileFollowing, isLoading: isLoadingFollowing } = useQuery({
+    queryKey: ['profile-following', user?.id],
+    queryFn: async () => {
+      const res = await api.get('/users/following');
+      return (res.data?.artists || []) as Array<{
+        id: string;
+        name: string;
+        imageUrl?: string | null;
+        isVerified?: boolean;
+        followersCount?: number;
+      }>;
+    },
+    enabled: Boolean(user?.id) && profileSection === 'following',
+  });
 
   // Form Fields
   const [name, setName] = useState(user?.name || '');
@@ -99,12 +206,15 @@ export const ProfilePage: React.FC = () => {
   const [publicPlaylists, setPublicPlaylists] = useState<boolean>(true);
   const [publicHistory, setPublicHistory] = useState<boolean>(false);
   const [showListeningStatus, setShowListeningStatus] = useState<boolean>(true);
+  const [saveListeningHistory, setSaveListeningHistory] = useState<boolean>(true);
 
   // Avatar Upload & Crop State
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [presetModalOpen, setPresetModalOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState<string>('');
   const [showAdvancedUrl, setShowAdvancedUrl] = useState(false);
+  const [isCheckingUrl, setIsCheckingUrl] = useState(false);
   const [customUrlInput, setCustomUrlInput] = useState('');
 
   // Password Change State
@@ -157,6 +267,7 @@ export const ProfilePage: React.FC = () => {
     const initialPubPlaylists = loadedPrefs.publicPlaylists !== undefined ? loadedPrefs.publicPlaylists : true;
     const initialPubHistory = loadedPrefs.publicHistory !== undefined ? loadedPrefs.publicHistory : false;
     const initialShowListening = loadedPrefs.showListeningStatus !== undefined ? loadedPrefs.showListeningStatus : true;
+    const initialSaveListening = loadedPrefs.saveListeningHistory !== undefined ? loadedPrefs.saveListeningHistory : true;
 
     setName(initialName);
     setAvatarUrl(initialAvatar);
@@ -170,6 +281,7 @@ export const ProfilePage: React.FC = () => {
     setPublicPlaylists(initialPubPlaylists);
     setPublicHistory(initialPubHistory);
     setShowListeningStatus(initialShowListening);
+    setSaveListeningHistory(initialSaveListening);
 
     setBaseline({
       name: initialName,
@@ -184,6 +296,7 @@ export const ProfilePage: React.FC = () => {
       publicPlaylists: initialPubPlaylists,
       publicHistory: initialPubHistory,
       showListeningStatus: initialShowListening,
+      saveListeningHistory: initialSaveListening,
     });
   }, [user]);
 
@@ -201,7 +314,7 @@ export const ProfilePage: React.FC = () => {
             playlists: res.data.playlists ?? 0,
             likes: res.data.likes ?? 0,
             following: res.data.following ?? 0,
-            hoursListened: res.data.hoursListened ?? 14,
+            hoursListened: res.data.hoursListened ?? 0,
           });
         }
       } catch {
@@ -229,8 +342,13 @@ export const ProfilePage: React.FC = () => {
       }
     }
     fetchStats();
+    const handlePlayRecorded = () => {
+      fetchStats();
+    };
+    window.addEventListener('mq:play-recorded', handlePlayRecorded);
     return () => {
       isMounted = false;
+      window.removeEventListener('mq:play-recorded', handlePlayRecorded);
     };
   }, [user]);
 
@@ -249,6 +367,7 @@ export const ProfilePage: React.FC = () => {
       publicPlaylists !== baseline.publicPlaylists ||
       publicHistory !== baseline.publicHistory ||
       showListeningStatus !== baseline.showListeningStatus ||
+      saveListeningHistory !== baseline.saveListeningHistory ||
       JSON.stringify(favoriteGenres) !== JSON.stringify(baseline.favoriteGenres)
     );
   }, [
@@ -264,6 +383,7 @@ export const ProfilePage: React.FC = () => {
     publicPlaylists,
     publicHistory,
     showListeningStatus,
+    saveListeningHistory,
     favoriteGenres,
   ]);
 
@@ -352,6 +472,21 @@ export const ProfilePage: React.FC = () => {
     });
   };
 
+  const handleSavePresetAvatar = async (preset: PresetAvatar) => {
+    const res = await api.patch('/auth/avatar', { presetId: preset.id });
+    const nextAvatarUrl = res.data?.avatarUrl || preset.url;
+    setAvatarUrl(nextAvatarUrl);
+    setBaseline((prev: any) => (prev ? { ...prev, avatarUrl: nextAvatarUrl } : prev));
+    updateUser({
+      ...res.data,
+      avatarUrl: nextAvatarUrl,
+    });
+    setToast({
+      type: 'success',
+      message: 'Đã cập nhật ảnh đại diện',
+    });
+  };
+
   const handleRemoveAvatar = () => {
     setAvatarUrl('');
     setToast({
@@ -361,14 +496,40 @@ export const ProfilePage: React.FC = () => {
   };
 
   const handleApplyCustomUrl = () => {
-    if (!customUrlInput.trim()) return;
-    setAvatarUrl(customUrlInput.trim());
-    setCustomUrlInput('');
-    setShowAdvancedUrl(false);
-    setToast({
-      type: 'success',
-      message: 'Đã áp dụng URL ảnh đại diện.',
-    });
+    const trimmed = customUrlInput.trim();
+    if (!trimmed) return;
+
+    const isHttpOrData =
+      /^https?:\/\/\S+/i.test(trimmed) || /^data:image\/[a-z0-9.+-]+;base64,/i.test(trimmed);
+    if (!isHttpOrData) {
+      setToast({
+        type: 'error',
+        message: 'URL không hợp lệ. Vui lòng dán đường dẫn ảnh bắt đầu bằng https:// hoặc http://.',
+      });
+      return;
+    }
+
+    setIsCheckingUrl(true);
+    const probe = new Image();
+    probe.referrerPolicy = 'no-referrer';
+    probe.onload = () => {
+      setIsCheckingUrl(false);
+      setAvatarUrl(trimmed);
+      setCustomUrlInput('');
+      setShowAdvancedUrl(false);
+      setToast({
+        type: 'success',
+        message: 'Đã áp dụng URL ảnh đại diện. Nhấn "Lưu thay đổi" để lưu.',
+      });
+    };
+    probe.onerror = () => {
+      setIsCheckingUrl(false);
+      setToast({
+        type: 'error',
+        message: 'Không thể tải ảnh từ URL này. Hãy dùng link trực tiếp tới tệp ảnh (jpg, png, webp...).',
+      });
+    };
+    probe.src = trimmed;
   };
 
   // Genre selection toggle
@@ -434,6 +595,7 @@ export const ProfilePage: React.FC = () => {
         publicPlaylists,
         publicHistory,
         showListeningStatus,
+        saveListeningHistory,
       };
       localStorage.setItem(storageKey, JSON.stringify(preferencesToSave));
 
@@ -462,6 +624,7 @@ export const ProfilePage: React.FC = () => {
         publicPlaylists,
         publicHistory,
         showListeningStatus,
+        saveListeningHistory,
       });
 
       setToast({
@@ -493,6 +656,7 @@ export const ProfilePage: React.FC = () => {
     setPublicPlaylists(baseline.publicPlaylists);
     setPublicHistory(baseline.publicHistory);
     setShowListeningStatus(baseline.showListeningStatus);
+    setSaveListeningHistory(baseline.saveListeningHistory ?? true);
   };
 
   // Handle Password Change
@@ -534,10 +698,15 @@ export const ProfilePage: React.FC = () => {
   };
 
   // Handle Logout All Devices
-  const handleLogoutAllDevices = async () => {
-    if (!window.confirm('Bạn có chắc muốn đăng xuất khỏi tất cả các thiết bị?')) return;
+  const handleLogoutAllDevices = () => {
+    setConfirmLogoutOpen(true);
+  };
+
+  const confirmLogoutAllDevices = async () => {
+    setIsLoggingOutAll(true);
     try {
       await api.post('/auth/logout-all');
+      setConfirmLogoutOpen(false);
       setToast({
         type: 'success',
         message: 'Đã hủy phiên đăng nhập trên tất cả các thiết bị khác.',
@@ -547,6 +716,8 @@ export const ProfilePage: React.FC = () => {
         type: 'error',
         message: err.response?.data?.message || 'Lỗi xử lý yêu cầu đăng xuất.',
       });
+    } finally {
+      setIsLoggingOutAll(false);
     }
   };
 
@@ -554,33 +725,6 @@ export const ProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-[720px] mx-auto py-8 space-y-6 select-none font-sans">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`fixed top-18 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl text-xs font-medium animate-in fade-in slide-in-from-top-3 border ${
-            toast.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-              : 'bg-red-50 dark:bg-red-950/80 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700'
-          }`}
-        >
-          {toast.type === 'success' ? (
-            <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          ) : (
-            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
-          )}
-          <span>{toast.message}</span>
-          <button
-            onClick={() => setToast(null)}
-            className="ml-2 text-mute hover:text-ink dark:hover:text-white"
-            aria-label="Đóng thông báo"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
       {/* Page Header */}
       <div className="border-b border-hairline dark:border-hairline-dark pb-4 space-y-1">
         <div className="flex items-center gap-2">
@@ -630,8 +774,8 @@ export const ProfilePage: React.FC = () => {
 
           {/* User Details & Avatar Controls */}
           <div className="flex-1 min-w-0 text-center sm:text-left space-y-2.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
+              <div className="min-w-0">
                 <h2 className="font-display font-bold text-lg text-ink dark:text-white truncate">
                   {name || user.name}
                 </h2>
@@ -642,12 +786,56 @@ export const ProfilePage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Role Badge */}
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/80 text-xs font-sans font-medium text-neutral-700 dark:text-neutral-300">
-                <span className="w-2 h-2 rounded-full bg-traffic-green" />
-                <span>Vai trò: {user.role === 'ADMIN' ? 'ADMIN' : 'THÀNH VIÊN'}</span>
+              {/* Role Badge + Chỉnh sửa trang cá nhân */}
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-center sm:justify-end gap-2 shrink-0">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/80 text-xs font-sans font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      user.role === 'MODERATOR' ? 'bg-amber-500' : 'bg-traffic-green'
+                    }`}
+                  />
+                  <span>
+                    Vai trò:{' '}
+                    {user.role === 'ADMIN'
+                      ? 'Admin'
+                      : user.role === 'MODERATOR'
+                        ? 'Moderator'
+                        : 'Thành Viên'}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant={isEditModalOpen ? 'primary' : 'secondary'}
+                  onClick={() => setIsEditModalOpen(true)}
+                  icon={<Edit3 className="w-3.5 h-3.5" />}
+                  className="whitespace-nowrap shrink-0"
+                >
+                  Chỉnh sửa trang cá nhân
+                </Button>
               </div>
             </div>
+
+            {(baseline?.bio ?? user.bio ?? '').trim() && (
+              <p className="text-xs sm:text-sm text-body dark:text-neutral-300 font-sans leading-relaxed max-w-xl break-words">
+                {(baseline?.bio ?? user.bio ?? '').trim()}
+              </p>
+            )}
+            <ProfileEnhancementBoundary>
+              <ProfileHeaderExtras
+                joinedAt={user.createdAt}
+                username={username}
+                insights={insights}
+                stats={stats}
+                onCopied={(message) => setToast({ type: 'success', message })}
+                onBadgeClick={(badgeId) => {
+                  setSelectedBadgeId(badgeId);
+                  document.getElementById('profile-badges-section')?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                  });
+                }}
+              />
+            </ProfileEnhancementBoundary>
 
             {/* Avatar Action Buttons */}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
@@ -658,6 +846,14 @@ export const ProfilePage: React.FC = () => {
                 icon={<Camera className="w-3.5 h-3.5" />}
               >
                 Đổi ảnh
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setPresetModalOpen(true)}
+                icon={<LayoutGrid className="w-3.5 h-3.5" />}
+              >
+                Chọn ảnh có sẵn
               </Button>
               {avatarUrl && (
                 <Button
@@ -672,35 +868,105 @@ export const ProfilePage: React.FC = () => {
               )}
               <button
                 type="button"
+                aria-expanded={showAdvancedUrl}
                 onClick={() => setShowAdvancedUrl(!showAdvancedUrl)}
-                className="inline-flex items-center gap-1 text-xs text-mute hover:text-ink dark:hover:text-white px-2 py-1 rounded-pill transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 text-xs text-mute hover:text-ink dark:hover:text-white px-2.5 py-1 rounded-pill hover:bg-surface-soft dark:hover:bg-surface-dark-soft transition-colors active:scale-[0.97] cursor-pointer"
               >
                 <span>Nâng cao</span>
-                {showAdvancedUrl ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                <motion.span
+                  aria-hidden="true"
+                  animate={{ rotate: showAdvancedUrl ? 180 : 0 }}
+                  transition={
+                    shouldReduceMotion
+                      ? { duration: 0 }
+                      : { duration: 0.25, ease: [0.32, 0.72, 0, 1] }
+                  }
+                  className="inline-flex items-center"
+                >
+                  <ChevronDown className="w-3 h-3" />
+                </motion.span>
               </button>
             </div>
 
             {/* Collapsible Advanced URL Input */}
-            {showAdvancedUrl && (
-              <div className="pt-2 flex items-center gap-2 animate-in fade-in duration-200">
-                <input
-                  type="url"
-                  placeholder="Dán URL ảnh đại diện trực tiếp..."
-                  value={customUrlInput}
-                  onChange={(e) => setCustomUrlInput(e.target.value)}
-                  className="flex-1 h-8 px-3 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-xs text-ink dark:text-white placeholder-mute focus:outline-none focus:ring-1 focus:ring-ink dark:focus:ring-white font-sans"
-                />
-                <Button variant="secondary" size="sm" onClick={handleApplyCustomUrl}>
-                  Áp dụng
-                </Button>
-              </div>
-            )}
+            <AnimatePresence initial={false}>
+              {showAdvancedUrl && (
+                <motion.div
+                  initial={
+                    shouldReduceMotion
+                      ? { opacity: 0 }
+                      : { height: 0, opacity: 0, y: -6 }
+                  }
+                  animate={
+                    shouldReduceMotion
+                      ? { opacity: 1, transition: { duration: 0.12 } }
+                      : {
+                          height: 'auto',
+                          opacity: 1,
+                          y: 0,
+                          transition: {
+                            height: { duration: 0.32, ease: [0.32, 0.72, 0, 1] },
+                            opacity: { duration: 0.22, delay: 0.05 },
+                            y: { duration: 0.28, ease: [0.32, 0.72, 0, 1] },
+                          },
+                        }
+                  }
+                  exit={
+                    shouldReduceMotion
+                      ? { opacity: 0, transition: { duration: 0.1 } }
+                      : {
+                          height: 0,
+                          opacity: 0,
+                          y: -4,
+                          transition: {
+                            height: { duration: 0.24, ease: [0.32, 0.72, 0, 1] },
+                            opacity: { duration: 0.14 },
+                            y: { duration: 0.18 },
+                          },
+                        }
+                  }
+                  className="overflow-hidden"
+                >
+                  <div className="pt-2 pb-1 px-1 flex items-center gap-2">
+                    <input
+                      type="url"
+                      placeholder="Dán URL ảnh đại diện trực tiếp..."
+                      value={customUrlInput}
+                      onChange={(e) => setCustomUrlInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleApplyCustomUrl();
+                        }
+                      }}
+                      className="flex-1 h-8 px-3 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-xs text-ink dark:text-white placeholder-mute focus:outline-none focus:border-ink/60 dark:focus:border-white/70 focus:ring-2 focus:ring-ink/15 dark:focus:ring-white/20 transition-colors font-sans"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleApplyCustomUrl}
+                      disabled={isCheckingUrl || !customUrlInput.trim()}
+                    >
+                      {isCheckingUrl ? 'Đang tải...' : 'Áp dụng'}
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
-        {/* Quick Stats Grid (3–4 ô nhỏ đặt dưới header card) */}
+        {/* Quick Stats Grid (Bấm vào Playlist, Bài đã thích, Nghệ sĩ theo dõi để xem danh sách bên dưới) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-hairline dark:border-hairline-dark">
-          <div className="p-3 rounded-xl bg-surface-soft/60 dark:bg-surface-dark-soft/60 border border-hairline/60 dark:border-hairline-dark/60 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setProfileSection('playlists')}
+            className={`p-3 rounded-xl border flex items-center gap-3 text-left transition-all cursor-pointer active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-traffic-green/35 ${
+              profileSection === 'playlists'
+                ? 'bg-traffic-green/8 border-traffic-green/70 ring-1 ring-traffic-green/20 shadow-xs'
+                : 'bg-surface-soft/60 dark:bg-surface-dark-soft/60 border-hairline/60 dark:border-hairline-dark/60 hover:border-hairline-strong dark:hover:border-white/25'
+            }`}
+          >
             <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
               <ListMusic className="w-4 h-4" />
             </div>
@@ -710,9 +976,17 @@ export const ProfilePage: React.FC = () => {
                 {isStatsLoading ? '...' : stats.playlists}
               </strong>
             </div>
-          </div>
+          </button>
 
-          <div className="p-3 rounded-xl bg-surface-soft/60 dark:bg-surface-dark-soft/60 border border-hairline/60 dark:border-hairline-dark/60 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setProfileSection('likes')}
+            className={`p-3 rounded-xl border flex items-center gap-3 text-left transition-all cursor-pointer active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-traffic-green/35 ${
+              profileSection === 'likes'
+                ? 'bg-traffic-green/8 border-traffic-green/70 ring-1 ring-traffic-green/20 shadow-xs'
+                : 'bg-surface-soft/60 dark:bg-surface-dark-soft/60 border-hairline/60 dark:border-hairline-dark/60 hover:border-hairline-strong dark:hover:border-white/25'
+            }`}
+          >
             <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
               <Heart className="w-4 h-4" />
             </div>
@@ -722,9 +996,17 @@ export const ProfilePage: React.FC = () => {
                 {isStatsLoading ? '...' : stats.likes}
               </strong>
             </div>
-          </div>
+          </button>
 
-          <div className="p-3 rounded-xl bg-surface-soft/60 dark:bg-surface-dark-soft/60 border border-hairline/60 dark:border-hairline-dark/60 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setProfileSection('following')}
+            className={`p-3 rounded-xl border flex items-center gap-3 text-left transition-all cursor-pointer active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-traffic-green/35 ${
+              profileSection === 'following'
+                ? 'bg-traffic-green/8 border-traffic-green/70 ring-1 ring-traffic-green/20 shadow-xs'
+                : 'bg-surface-soft/60 dark:bg-surface-dark-soft/60 border-hairline/60 dark:border-hairline-dark/60 hover:border-hairline-strong dark:hover:border-white/25'
+            }`}
+          >
             <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
               <Users className="w-4 h-4" />
             </div>
@@ -734,9 +1016,17 @@ export const ProfilePage: React.FC = () => {
                 {isStatsLoading ? '...' : stats.following}
               </strong>
             </div>
-          </div>
+          </button>
 
-          <div className="p-3 rounded-xl bg-surface-soft/60 dark:bg-surface-dark-soft/60 border border-hairline/60 dark:border-hairline-dark/60 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setProfileSection('listening')}
+            className={`p-3 rounded-xl border flex items-center gap-3 text-left transition-all cursor-pointer active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-traffic-green/35 ${
+              profileSection === 'listening'
+                ? 'bg-traffic-green/8 border-traffic-green/70 ring-1 ring-traffic-green/20 shadow-xs'
+                : 'bg-surface-soft/60 dark:bg-surface-dark-soft/60 border-hairline/60 dark:border-hairline-dark/60 hover:border-hairline-strong dark:hover:border-white/25'
+            }`}
+          >
             <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
               <Clock className="w-4 h-4" />
             </div>
@@ -746,55 +1036,309 @@ export const ProfilePage: React.FC = () => {
                 {isStatsLoading ? '...' : `${stats.hoursListened}h`}
               </strong>
             </div>
-          </div>
+          </button>
         </div>
+
+        <ProfileEnhancementBoundary>
+          <ProfileExtendedStats
+            insights={insights}
+            isLoading={isInsightsLoading}
+            activeSection={profileSection}
+            onSelectSection={(sec) => setProfileSection(sec)}
+          />
+        </ProfileEnhancementBoundary>
+
+        <ProfileEnhancementBoundary>
+          <ProfileCompletenessCard
+            hasBio={Boolean((baseline?.bio ?? user.bio ?? '').trim())}
+            hasAvatar={Boolean(avatarUrl)}
+            playlistCount={stats.playlists}
+            followingCount={stats.following}
+            onActionClick={(step) => {
+              if (step === 'bio') {
+                setActiveTab('personal');
+                setIsEditModalOpen(true);
+              } else if (step === 'avatar') {
+                fileInputRef.current?.click();
+              } else if (step === 'playlist') {
+                setProfileSection('playlists');
+              } else if (step === 'follow') {
+                setProfileSection('following');
+              }
+            }}
+          />
+        </ProfileEnhancementBoundary>
       </section>
 
-      {/* Tabs Navigation (Desktop: ngang | Mobile: cuộn ngang) */}
-      <nav
-        role="tablist"
-        aria-label="Danh mục cài đặt hồ sơ"
-        className="flex items-center gap-1.5 p-1 rounded-2xl bg-surface-soft dark:bg-surface-dark-card border border-hairline dark:border-hairline-dark overflow-x-auto scrollbar-none"
-      >
-        {[
-          { id: 'personal', label: 'Thông tin', icon: <UserIcon className="w-4 h-4" /> },
-          { id: 'music', label: 'Âm nhạc', icon: <Music2 className="w-4 h-4" /> },
-          { id: 'privacy', label: 'Quyền riêng tư', icon: <ShieldCheck className="w-4 h-4" /> },
-          { id: 'security', label: 'Bảo mật', icon: <KeyRound className="w-4 h-4" /> },
-        ].map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              role="tab"
-              id={`tab-${tab.id}`}
-              aria-selected={isActive}
-              aria-controls={`panel-${tab.id}`}
-              onClick={() => setActiveTab(tab.id as TabType)}
-              data-pill-active={isActive ? 'true' : undefined}
-              style={
-                isActive
-                  ? {
-                      backgroundColor: isDark ? '#ffffff' : '#171717',
-                      color: isDark ? '#000000' : '#ffffff',
-                    }
-                  : {}
-              }
-              className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-sans transition-all whitespace-nowrap cursor-pointer ${
-                isActive
-                  ? 'font-bold shadow-sm'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50 font-medium'
-              }`}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* Nội dung bên dưới với hiệu ứng chuyển đổi tab mượt mà */}
+      <SegmentedTabContent activeKey={profileSection} direction={sectionDirection}>
+        {/* ================= SECTION: PLAYLISTS CỦA TÔI ================= */}
+        {profileSection === 'playlists' && (
+        <section className="p-6 rounded-2xl border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card shadow-subtle space-y-4">
+          <div className="flex items-center justify-between border-b border-hairline dark:border-hairline-dark pb-3">
+            <h3 className="font-display font-bold text-base text-ink dark:text-white flex items-center gap-2">
+              <ListMusic className="w-4 h-4 text-blue-500" />
+              Playlist của bạn ({profilePlaylists?.length ?? stats.playlists})
+            </h3>
+            <div className="flex items-center gap-3">
+              <ProfileEnhancementBoundary>
+                <PlaylistCreateTrigger
+                  userId={user.id}
+                  onCreated={() => {
+                    setStats((prev) => ({ ...prev, playlists: prev.playlists + 1 }));
+                    setToast({ type: 'success', message: 'Đã tạo playlist mới' });
+                  }}
+                />
+              </ProfileEnhancementBoundary>
+              <Link to="/library" className="text-xs font-medium text-traffic-green hover:underline">
+                Quản lý ở Thư viện →
+              </Link>
+            </div>
+          </div>
 
-      {/* Main Tab Panels */}
-      <div className="p-6 rounded-2xl border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card shadow-subtle">
+          {isLoadingPlaylists ? (
+            <div className="py-10 text-center text-xs text-mute">Đang tải playlist...</div>
+          ) : !profilePlaylists || profilePlaylists.length === 0 ? (
+            <div className="py-12 text-center space-y-2 text-xs text-mute">
+              <p>Bạn chưa có playlist nào.</p>
+              <Link to="/library" className="inline-block font-semibold text-ink dark:text-white underline">
+                Tạo playlist đầu tiên
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {profilePlaylists.map((pl) => (
+                <Link
+                  key={pl.id}
+                  to={`/playlists/${pl.id}`}
+                  className="group p-3.5 rounded-xl border border-hairline dark:border-hairline-dark bg-surface-soft/40 dark:bg-surface-dark-soft/40 hover:border-hairline-strong dark:hover:border-white/25 transition-all flex items-center gap-3.5"
+                >
+                  <div className="w-12 h-12 rounded-lg bg-surface-soft dark:bg-surface-dark-soft overflow-hidden shrink-0 flex items-center justify-center border border-hairline dark:border-hairline-dark">
+                    <PlaylistCoverCollage playlist={pl} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-ink dark:text-white truncate group-hover:text-traffic-green transition-colors">
+                      {pl.title}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-mute mt-0.5">
+                      {pl.isPublic ? (
+                        <Globe className="w-3 h-3 text-emerald-500" />
+                      ) : (
+                        <Lock className="w-3 h-3" />
+                      )}
+                      <span>{pl.isPublic ? 'Công khai' : 'Riêng tư'}</span>
+                      <span>·</span>
+                      <span>{pl._count?.songs ?? 0} bài hát</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ================= SECTION: BÀI HÁT ĐÃ THÍCH ================= */}
+      {profileSection === 'likes' && (
+        <section className="p-6 rounded-2xl border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card shadow-subtle space-y-4">
+          <div className="flex items-center justify-between border-b border-hairline dark:border-hairline-dark pb-3">
+            <h3 className="font-display font-bold text-base text-ink dark:text-white flex items-center gap-2">
+              <Heart className="w-4 h-4 text-rose-500" />
+              Bài hát đã thích ({profileLikes?.length ?? stats.likes})
+            </h3>
+            <Link to="/library" className="text-xs font-medium text-traffic-green hover:underline">
+              Mở trong Thư viện →
+            </Link>
+          </div>
+
+          {isLoadingLikes ? (
+            <div className="py-10 text-center text-xs text-mute">Đang tải bài hát đã thích...</div>
+          ) : !profileLikes || profileLikes.length === 0 ? (
+            <div className="py-12 text-center text-xs text-mute">
+              Bạn chưa thích bài hát nào.
+            </div>
+          ) : (
+            <div className="divide-y divide-hairline/40 dark:divide-hairline-dark/40">
+              {profileLikes.map((track, idx) => (
+                <div key={track.id} className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <SongRow
+                      track={track}
+                      index={idx}
+                      queueContext={profileLikes}
+                      isInitiallyLiked
+                    />
+                  </div>
+                  <ProfileEnhancementBoundary>
+                    <UnlikeTrackButton
+                      track={track}
+                      userId={user.id}
+                      onUnliked={() =>
+                        setStats((prev) => ({ ...prev, likes: Math.max(0, prev.likes - 1) }))
+                      }
+                    />
+                  </ProfileEnhancementBoundary>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ================= SECTION: NGHỆ SĨ ĐANG THEO DÕI ================= */}
+      {profileSection === 'following' && (
+        <section className="p-6 rounded-2xl border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card shadow-subtle space-y-4">
+          <div className="flex items-center justify-between border-b border-hairline dark:border-hairline-dark pb-3">
+            <h3 className="font-display font-bold text-base text-ink dark:text-white flex items-center gap-2">
+              <Users className="w-4 h-4 text-emerald-500" />
+              Nghệ sĩ đang theo dõi ({profileFollowing?.length ?? stats.following})
+            </h3>
+            <Link to="/artists" className="text-xs font-medium text-traffic-green hover:underline">
+              Khám phá nghệ sĩ →
+            </Link>
+          </div>
+
+          {isLoadingFollowing ? (
+            <div className="py-10 text-center text-xs text-mute">Đang tải danh sách nghệ sĩ...</div>
+          ) : !profileFollowing || profileFollowing.length === 0 ? (
+            <div className="py-12 text-center space-y-2 text-xs text-mute">
+              <p>Bạn chưa theo dõi nghệ sĩ nào.</p>
+              <Link to="/artists" className="inline-block font-semibold text-ink dark:text-white underline">
+                Khám phá nghệ sĩ ngay
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+              {profileFollowing.map((artist) => (
+                <Link
+                  key={artist.id}
+                  to={`/artists/${encodeURIComponent(artist.id)}`}
+                  className="group p-4 rounded-xl border border-hairline dark:border-hairline-dark bg-surface-soft/40 dark:bg-surface-dark-soft/40 hover:border-hairline-strong dark:hover:border-white/25 transition-all flex flex-col items-center text-center gap-2.5"
+                >
+                  <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark shrink-0">
+                    {artist.imageUrl ? (
+                      <img
+                        src={artist.imageUrl}
+                        alt={artist.name}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center font-bold text-lg text-mute">
+                        {(artist.name || '?').slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 w-full">
+                    <div className="text-sm font-semibold text-ink dark:text-white truncate inline-flex items-center justify-center gap-1 max-w-full group-hover:text-traffic-green transition-colors">
+                      <span className="truncate">{artist.name}</span>
+                      {artist.isVerified && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-mute mt-0.5">Nghệ sĩ đang theo dõi</p>
+                  </div>
+                  <ProfileEnhancementBoundary>
+                    <UnfollowArtistButton
+                      artistId={artist.id}
+                      userId={user.id}
+                      onUnfollowed={() =>
+                        setStats((prev) => ({ ...prev, following: Math.max(0, prev.following - 1) }))
+                      }
+                    />
+                  </ProfileEnhancementBoundary>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ================= SECTION: BIỂU ĐỒ NGHE NHẠC ================= */}
+      {profileSection === 'listening' && (
+        <ProfileEnhancementBoundary>
+          <ListeningChartPanel
+            insights={insights}
+            totalHours={stats.hoursListened}
+            isLoading={isInsightsLoading}
+          />
+        </ProfileEnhancementBoundary>
+      )}
+
+      {/* ================= SECTION: 4 THẺ THỐNG KÊ MỞ RỘNG ================= */}
+      {(profileSection === 'history' ||
+        profileSection === 'streak' ||
+        profileSection === 'top-artists' ||
+        profileSection === 'top-genres') && (
+        <ProfileEnhancementBoundary>
+          <ProfileInsightPanels
+            section={profileSection}
+            userId={user.id}
+            insights={insights}
+            isInsightsLoading={isInsightsLoading}
+          />
+        </ProfileEnhancementBoundary>
+      )}
+
+      </SegmentedTabContent>
+
+      {/* ================= MODAL: CHỈNH SỬA TRANG CÁ NHÂN (5 TABS CÀI ĐẶT) ================= */}
+      <Modal
+        open={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Chỉnh sửa trang cá nhân"
+        subtitle="Cập nhật thông tin, sở thích âm nhạc, quyền riêng tư và giao diện"
+        icon={<Edit3 className="w-4 h-4 text-traffic-green" />}
+        size="xl"
+        className="!max-w-[780px]"
+        bodyClassName="p-6 sm:p-7"
+        footer={
+          <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+            <div className="text-xs text-mute font-sans">
+              {isDirty ? (
+                <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  Bạn có thay đổi chưa lưu
+                </span>
+              ) : (
+                <span>Tất cả thông tin đã được đồng bộ</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 ml-auto">
+              {isDirty && (
+                <Button variant="secondary" size="sm" onClick={handleCancel} disabled={isSaving}>
+                  Hủy
+                </Button>
+              )}
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleSaveProfile()}
+                disabled={!isDirty || !isFormValid || isSaving}
+                icon={isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              >
+                {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div id="profile-edit-section" className="space-y-4">
+          {/* Tabs Navigation (iOS Segmented Control) */}
+          <div className="overflow-x-auto pb-1">
+            <SegmentedTabs
+              tabs={PROFILE_TABS}
+              activeId={activeTab}
+              fullWidth
+              ariaLabel="Danh mục cài đặt hồ sơ"
+              onChange={(id) => setActiveTab(id as TabType)}
+            />
+          </div>
+
+          {/* Main Tab Panels */}
+          <div className="p-6 sm:p-7 rounded-2xl border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card min-h-[420px]">
+            <SegmentedTabContent activeKey={activeTab} direction={tabDirection}>
         {/* ================= TAB 1: THÔNG TIN CÁ NHÂN ================= */}
         {activeTab === 'personal' && (
           <form
@@ -819,10 +1363,10 @@ export const ProfilePage: React.FC = () => {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Nhập họ và tên đầy đủ..."
-                className={`w-full h-10 px-4 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border text-sm text-ink dark:text-white placeholder-mute focus:outline-none focus:ring-1 transition-all ${
+                className={`w-full h-10 px-4 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border text-sm text-ink dark:text-white placeholder-mute focus:outline-none focus:ring-2 transition-all ${
                   nameError
-                    ? 'border-red-400 focus:ring-red-400'
-                    : 'border-hairline dark:border-hairline-dark focus:ring-ink dark:focus:ring-white'
+                    ? 'border-red-400 focus:border-red-500 focus:ring-red-400/20'
+                    : 'border-hairline dark:border-hairline-dark focus:border-ink/40 dark:focus:border-white/45 focus:ring-ink/10 dark:focus:ring-white/15'
                 }`}
               />
               {nameError && <p className="text-[11px] text-red-500 mt-1 pl-2">{nameError}</p>}
@@ -841,7 +1385,7 @@ export const ProfilePage: React.FC = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9._-]/g, '').toLowerCase())}
                   placeholder="username..."
-                  className="w-full h-10 pl-10 pr-4 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white placeholder-mute focus:outline-none focus:ring-1 focus:ring-ink dark:focus:ring-white font-sans"
+                  className="w-full h-10 pl-10 pr-4 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white placeholder-mute focus:outline-none focus:border-ink/40 dark:focus:border-white/45 focus:ring-2 focus:ring-ink/10 dark:focus:ring-white/15 transition-all font-sans"
                 />
               </div>
               <p className="text-[11px] text-mute mt-1 pl-2">
@@ -869,10 +1413,10 @@ export const ProfilePage: React.FC = () => {
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="Chia sẻ vài dòng về sở thích âm nhạc, bài hát yêu thích của bạn..."
-                className={`w-full p-3.5 rounded-2xl bg-surface-soft dark:bg-surface-dark-soft border text-sm text-ink dark:text-white placeholder-mute focus:outline-none focus:ring-1 transition-all resize-none font-sans ${
+                className={`w-full p-3.5 rounded-2xl bg-surface-soft dark:bg-surface-dark-soft border text-sm text-ink dark:text-white placeholder-mute focus:outline-none focus:ring-2 transition-all resize-none font-sans ${
                   bioError
-                    ? 'border-red-400 focus:ring-red-400'
-                    : 'border-hairline dark:border-hairline-dark focus:ring-ink dark:focus:ring-white'
+                    ? 'border-red-400 focus:border-red-500 focus:ring-red-400/20'
+                    : 'border-hairline dark:border-hairline-dark focus:border-ink/40 dark:focus:border-white/45 focus:ring-ink/10 dark:focus:ring-white/15'
                 }`}
               />
               {bioError && <p className="text-[11px] text-red-500 mt-1 pl-2">{bioError}</p>}
@@ -892,7 +1436,7 @@ export const ProfilePage: React.FC = () => {
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="VD: Hà Nội, Việt Nam"
-                    className="w-full h-10 pl-10 pr-4 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white placeholder-mute focus:outline-none focus:ring-1 focus:ring-ink dark:focus:ring-white font-sans"
+                    className="w-full h-10 pl-10 pr-4 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white placeholder-mute focus:outline-none focus:border-ink/40 dark:focus:border-white/45 focus:ring-2 focus:ring-ink/10 dark:focus:ring-white/15 transition-all font-sans"
                   />
                 </div>
               </div>
@@ -908,7 +1452,7 @@ export const ProfilePage: React.FC = () => {
                     type="date"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full h-10 pl-10 pr-4 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white placeholder-mute focus:outline-none focus:ring-1 focus:ring-ink dark:focus:ring-white font-sans"
+                    className="w-full h-10 pl-10 pr-4 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white placeholder-mute focus:outline-none focus:border-ink/40 dark:focus:border-white/45 focus:ring-2 focus:ring-ink/10 dark:focus:ring-white/15 transition-all font-sans"
                   />
                 </div>
               </div>
@@ -1062,13 +1606,45 @@ export const ProfilePage: React.FC = () => {
                 role="switch"
                 aria-checked={autoplaySimilar}
                 onClick={() => setAutoplaySimilar(!autoplaySimilar)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ink dark:focus:ring-white ${
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/25 dark:focus-visible:ring-white/30 ${
                   autoplaySimilar ? 'bg-neutral-900 dark:bg-white' : 'bg-neutral-300 dark:bg-neutral-700'
                 }`}
               >
                 <span
                   className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-md ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 ${
                     autoplaySimilar
+                      ? 'translate-x-5 bg-white dark:bg-black'
+                      : 'translate-x-0 bg-white dark:bg-neutral-300'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Tự động cuộn tới khung Đang phát */}
+            <div className="pt-4 border-t border-hairline dark:border-hairline-dark flex items-center justify-between gap-4">
+              <div>
+                <strong className="block text-sm font-semibold text-ink dark:text-white">
+                  Tự động cuộn tới khung "Đang phát"
+                </strong>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 max-w-md">
+                  Tự động cuộn mượt tới trình phát chính ở trang Khám phá khi chọn phát bài hát mới.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoScrollToNowPlaying}
+                onClick={() => setAutoScrollToNowPlaying(!autoScrollToNowPlaying)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/25 dark:focus-visible:ring-white/30 ${
+                  autoScrollToNowPlaying
+                    ? 'bg-neutral-900 dark:bg-white'
+                    : 'bg-neutral-300 dark:bg-neutral-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-md ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 ${
+                    autoScrollToNowPlaying
                       ? 'translate-x-5 bg-white dark:bg-black'
                       : 'translate-x-0 bg-white dark:bg-neutral-300'
                   }`}
@@ -1101,7 +1677,7 @@ export const ProfilePage: React.FC = () => {
                 role="switch"
                 aria-checked={publicPlaylists}
                 onClick={() => setPublicPlaylists(!publicPlaylists)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ink dark:focus:ring-white ${
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/25 dark:focus-visible:ring-white/30 ${
                   publicPlaylists ? 'bg-neutral-900 dark:bg-white' : 'bg-neutral-300 dark:bg-neutral-700'
                 }`}
               >
@@ -1130,7 +1706,7 @@ export const ProfilePage: React.FC = () => {
                 role="switch"
                 aria-checked={publicHistory}
                 onClick={() => setPublicHistory(!publicHistory)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ink dark:focus:ring-white ${
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/25 dark:focus-visible:ring-white/30 ${
                   publicHistory ? 'bg-neutral-900 dark:bg-white' : 'bg-neutral-300 dark:bg-neutral-700'
                 }`}
               >
@@ -1145,7 +1721,7 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {/* Toggle 3: Hiển thị "Đang nghe" */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4 pb-4 border-b border-hairline dark:border-hairline-dark">
               <div>
                 <strong className="block text-sm font-semibold text-ink dark:text-white">
                   Hiển thị trạng thái "Đang nghe"
@@ -1159,13 +1735,42 @@ export const ProfilePage: React.FC = () => {
                 role="switch"
                 aria-checked={showListeningStatus}
                 onClick={() => setShowListeningStatus(!showListeningStatus)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ink dark:focus:ring-white ${
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/25 dark:focus-visible:ring-white/30 ${
                   showListeningStatus ? 'bg-neutral-900 dark:bg-white' : 'bg-neutral-300 dark:bg-neutral-700'
                 }`}
               >
                 <span
                   className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-md ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 ${
                     showListeningStatus
+                      ? 'translate-x-5 bg-white dark:bg-black'
+                      : 'translate-x-0 bg-white dark:bg-neutral-300'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Toggle 4: Lưu lịch sử nghe */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <strong className="block text-sm font-semibold text-ink dark:text-white">
+                  Lưu lịch sử nghe
+                </strong>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 max-w-md">
+                  Ghi lại các bài hát bạn vừa nghe để hiển thị mục "Tiếp tục nghe" và gợi ý nhạc phù hợp.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={saveListeningHistory}
+                onClick={() => setSaveListeningHistory(!saveListeningHistory)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/25 dark:focus-visible:ring-white/30 ${
+                  saveListeningHistory ? 'bg-neutral-900 dark:bg-white' : 'bg-neutral-300 dark:bg-neutral-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-md ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 ${
+                    saveListeningHistory
                       ? 'translate-x-5 bg-white dark:bg-black'
                       : 'translate-x-0 bg-white dark:bg-neutral-300'
                   }`}
@@ -1213,7 +1818,7 @@ export const ProfilePage: React.FC = () => {
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Nhập mật khẩu hiện tại..."
-                    className="w-full h-10 px-4 pr-10 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white focus:outline-none focus:ring-1 focus:ring-ink dark:focus:ring-white font-sans"
+                    className="w-full h-10 px-4 pr-10 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white focus:outline-none focus:border-ink/40 dark:focus:border-white/45 focus:ring-2 focus:ring-ink/10 dark:focus:ring-white/15 transition-all font-sans"
                   />
                   <button
                     type="button"
@@ -1237,7 +1842,7 @@ export const ProfilePage: React.FC = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)..."
-                    className="w-full h-10 px-4 pr-10 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white focus:outline-none focus:ring-1 focus:ring-ink dark:focus:ring-white font-sans"
+                    className="w-full h-10 px-4 pr-10 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white focus:outline-none focus:border-ink/40 dark:focus:border-white/45 focus:ring-2 focus:ring-ink/10 dark:focus:ring-white/15 transition-all font-sans"
                   />
                   <button
                     type="button"
@@ -1285,7 +1890,7 @@ export const ProfilePage: React.FC = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Nhập lại mật khẩu mới..."
-                    className="w-full h-10 px-4 pr-10 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white focus:outline-none focus:ring-1 focus:ring-ink dark:focus:ring-white font-sans"
+                    className="w-full h-10 px-4 pr-10 rounded-pill bg-surface-soft dark:bg-surface-dark-soft border border-hairline dark:border-hairline-dark text-sm text-ink dark:text-white focus:outline-none focus:border-ink/40 dark:focus:border-white/45 focus:ring-2 focus:ring-ink/10 dark:focus:ring-white/15 transition-all font-sans"
                   />
                   <button
                     type="button"
@@ -1380,39 +1985,212 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Tab 5: Giao diện & Hiệu ứng chuyển đổi Theme */}
+        {activeTab === 'theme' && (
+          <div
+            id="panel-theme"
+            role="tabpanel"
+            aria-labelledby="tab-theme"
+            className="space-y-6 animate-in fade-in duration-200"
+          >
+            {/* Box 1: Interactive PinUI Theme Switch Stage */}
+            <div className="p-6 rounded-card border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card space-y-4">
+              <div>
+                <h3 className="font-display font-bold text-base text-ink dark:text-white flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <span>Hộp cát trải nghiệm hiệu ứng Theme Switch (PinUI)</span>
+                </h3>
+                <p className="text-xs text-mute mt-1">
+                  Bấm trực tiếp vào nút tròn ở giữa để kích hoạt hiệu ứng chuyển đổi giữa nền Sáng và Tối.
+                </p>
+              </div>
+
+              {/* Stage Container */}
+              <div className="w-full rounded-2xl overflow-hidden border border-hairline dark:border-hairline-dark shadow-sm h-[320px]">
+                <ThemeSwitch
+                  theme={isDark ? 'dark' : 'light'}
+                  onThemeChange={(next) => setTheme(next === 'dark')}
+                  defaultEffect={effect}
+                  onEffectChange={(newEffect) => setEffect(newEffect)}
+                  sound={sound}
+                  fill={true}
+                />
+              </div>
+            </div>
+
+            {/* Box 2: Effect Options Selection */}
+            <div className="p-6 rounded-card border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card space-y-4">
+              <div>
+                <h3 className="font-display font-bold text-base text-ink dark:text-white">
+                  Lựa chọn hiệu ứng mặc định
+                </h3>
+                <p className="text-xs text-mute mt-1">
+                  Hiệu ứng này sẽ được kích hoạt toàn màn hình khi bạn bấm nút Mặt trời/Mặt trăng trên thanh điều hướng Navbar.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  {
+                    id: 'droplet' as const,
+                    name: 'Giọt nước',
+                    subtitle: 'Droplet Physics',
+                    desc: 'Rơi từ đỉnh màn hình trúng nút bấm, tạo xung nảy và sóng lan tỏa tròn mở rộng toàn bộ website.',
+                    icon: <Droplets className="w-5 h-5 text-blue-500" />,
+                    badge: 'Khuyên dùng',
+                  },
+                  {
+                    id: 'rain' as const,
+                    name: 'Cơn mưa',
+                    subtitle: 'Rain Shower',
+                    desc: 'Cơn mưa hạt rơi xiên theo góc gió, các vũng nước loang dần và hòa trộn phủ kín toàn màn hình.',
+                    icon: <CloudRain className="w-5 h-5 text-cyan-500" />,
+                    badge: 'Thư giãn',
+                  },
+                  {
+                    id: 'diwali' as const,
+                    name: 'Pháo hoa Diwali',
+                    subtitle: 'Festival Fireworks',
+                    desc: 'Pháo hoa phóng từ nút bấm, phát nổ rực rỡ kèm âm thanh vòm sống động và muôn vàn vì sao phủ kín.',
+                    icon: <Flame className="w-5 h-5 text-amber-500" />,
+                    badge: 'Sinh động',
+                  },
+                ].map((item) => {
+                  const isSelected = effect === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setEffect(item.id)}
+                      className={`p-4 rounded-card border text-left transition-all flex flex-col justify-between space-y-3 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/25 dark:focus-visible:ring-white/30 ${
+                        isSelected
+                          ? 'border-ink/45 dark:border-white/50 bg-surface-soft/80 dark:bg-surface-dark-soft/80 shadow-xs ring-1 ring-ink/10 dark:ring-white/15'
+                          : 'border-hairline dark:border-hairline-dark hover:border-hairline-strong dark:hover:border-hairline-dark/80 bg-canvas dark:bg-surface-dark-card'
+                      }`}
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="p-2 rounded-lg bg-surface-soft dark:bg-surface-dark-soft">
+                            {item.icon}
+                          </div>
+                          {isSelected && (
+                            <span className="w-5 h-5 rounded-full bg-ink dark:bg-white text-white dark:text-black flex items-center justify-center">
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-xs text-ink dark:text-white flex items-center gap-1.5">
+                            {item.name}
+                          </h4>
+                          <p className="text-[10px] font-sans text-mute">{item.subtitle}</p>
+                        </div>
+                        <p className="text-[11px] text-body dark:text-mute leading-relaxed">
+                          {item.desc}
+                        </p>
+                      </div>
+
+                      <span className="text-[10px] font-sans px-2 py-0.5 rounded-pill bg-surface-soft dark:bg-surface-dark-soft text-mute self-start">
+                        {item.badge}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Box 3: Sound Setting */}
+            <div className="p-5 rounded-card border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                  {sound ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4 text-mute" />}
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-ink dark:text-white">
+                    Âm thanh pháo hoa (Web Audio API)
+                  </h4>
+                  <p className="text-[11px] text-mute">
+                    Tạo âm thanh tiếng rít tên lửa, tiếng nổ vang và tí tách tự nhiên khi chọn hiệu ứng Diwali
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSound(!sound)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  sound ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-700'
+                }`}
+                role="switch"
+                aria-checked={sound}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    sound ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
+        </SegmentedTabContent>
       </div>
-
-      {/* Sticky Bottom Actions Bar (Nút Lưu & Hủy) */}
-      <div className="p-4 rounded-2xl border border-hairline dark:border-hairline-dark bg-canvas/90 dark:bg-surface-dark-card/90 backdrop-blur-md shadow-lg flex items-center justify-between gap-4">
-        <div className="text-xs text-mute font-sans">
-          {isDirty ? (
-            <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              Bạn có thay đổi chưa lưu
-            </span>
-          ) : (
-            <span>Tất cả thông tin đã được đồng bộ</span>
-          )}
         </div>
+      </Modal>
 
-        <div className="flex items-center gap-2">
-          {isDirty && (
-            <Button variant="secondary" size="md" onClick={handleCancel} disabled={isSaving}>
+      {/* PHẦN 3: THÀNH TÍCH VÀ HOẠT ĐỘNG */}
+      <ProfileEnhancementBoundary>
+        <ProfileAchievementsSection
+          insights={insights}
+          isLoading={isInsightsLoading}
+          isError={isInsightsError}
+          onRetry={() => refetchInsights()}
+          selectedBadgeId={selectedBadgeId}
+          onSelectBadge={setSelectedBadgeId}
+          onNavigateSection={(section) => {
+            setProfileSection(section);
+            window.scrollTo({ top: 220, behavior: 'smooth' });
+          }}
+          stats={stats}
+        />
+      </ProfileEnhancementBoundary>
+
+      {/* Shared Confirm Modal: Đăng xuất khỏi tất cả thiết bị */}
+      <Modal
+        open={confirmLogoutOpen}
+        onClose={() => !isLoggingOutAll && setConfirmLogoutOpen(false)}
+        title="Đăng xuất khỏi tất cả thiết bị?"
+        subtitle="Mọi phiên đăng nhập trên các thiết bị khác sẽ bị hủy ngay lập tức."
+        icon={<LogOut className="w-5 h-5 text-red-500" />}
+        size="sm"
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setConfirmLogoutOpen(false)}
+              disabled={isLoggingOutAll}
+            >
               Hủy
             </Button>
-          )}
-
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => handleSaveProfile()}
-            disabled={!isDirty || !isFormValid || isSaving}
-            icon={isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-          >
-            {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
-          </Button>
-        </div>
-      </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={confirmLogoutAllDevices}
+              disabled={isLoggingOutAll}
+              className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+              icon={isLoggingOutAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+            >
+              {isLoggingOutAll ? 'Đang xử lý...' : 'Xác nhận đăng xuất'}
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-xs text-body dark:text-neutral-300 leading-relaxed">
+          Bạn sẽ cần đăng nhập lại trên các thiết bị khác nếu muốn tiếp tục sử dụng.
+        </p>
+      </Modal>
 
       {/* Avatar Crop Modal */}
       <AvatarCropModal
@@ -1421,6 +2199,42 @@ export const ProfilePage: React.FC = () => {
         onClose={() => setCropModalOpen(false)}
         onApply={handleApplyCroppedAvatar}
       />
+
+      {/* Preset Avatar Picker Modal */}
+      <AvatarPickerModal
+        open={presetModalOpen}
+        onClose={() => setPresetModalOpen(false)}
+        currentAvatarUrl={avatarUrl}
+        userName={name || user.name}
+        onSavePreset={handleSavePresetAvatar}
+      />
+
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`!mt-0 fixed top-18 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl text-xs font-medium animate-in fade-in slide-in-from-top-3 border ${
+            toast.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+              : 'bg-red-50 dark:bg-red-950/80 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+          )}
+          <span>{toast.message}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="ml-2 text-mute hover:text-ink dark:hover:text-white"
+            aria-label="Đóng thông báo"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 };

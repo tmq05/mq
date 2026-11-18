@@ -1,0 +1,80 @@
+/* ==========================================================================
+   Now Playing Hero & PlayerBar Tokens — Biến CSS dễ tinh chỉnh
+   ========================================================================== */
+
+.np-hero {
+  --np-accent-rgb: 39, 201, 63;
+  --np-glow-duration: 800ms;
+  --np-scroll-margin: 76px;
+  --np-card-radius: 24px;
+  --np-cover-radius: 16px;
+
+  scroll-margin-top: var(--np-scroll-margin);
+  border-radius: var(--np-card-radius);
+}
+
+/* Hiệu ứng nháy sáng nhẹ viền + glow khi cuộn tới nơi */
+@keyframes np-glow-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(var(--np-accent-rgb), 0.55),
+      0 12px 36px -8px rgba(var(--np-accent-rgb), 0.35);
+    border-color: rgba(var(--np-accent-rgb), 0.75);
+  }
+  55% {
+    box-shadow:
+      0 0 0 5px rgba(var(--np-accent-rgb), 0.2),
+      0 18px 46px -8px rgba(var(--np-accent-rgb), 0.25);
+    border-color: rgba(var(--np-accent-rgb), 0.45);
+  }
+  100% {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
+  }
+}
+
+.np-hero--glowing {
+  animation: np-glow-pulse var(--np-glow-duration) cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+/* Thanh sóng âm chuyển động theo nhạc khi đang phát */
+@keyframes np-wave-bar {
+  0%, 100% {
+    transform: scaleY(0.32);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.np-wave-bar {
+  transform-origin: bottom;
+  animation: np-wave-bar 0.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.np-wave-bar--2 {
+  animation-delay: 0.16s;
+  animation-duration: 0.65s;
+}
+
+.np-wave-bar--3 {
+  animation-delay: 0.32s;
+  animation-duration: 0.9s;
+}
+
+.np-wave-bar--4 {
+  animation-delay: 0.48s;
+  animation-duration: 0.72s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .np-hero--glowing {
+    animation: none;
+    box-shadow: 0 0 0 2px rgba(var(--np-accent-rgb), 0.5);
+  }
+
+  .np-wave-bar {
+    animation: none;
+    transform: scaleY(0.7);
+  }
+}

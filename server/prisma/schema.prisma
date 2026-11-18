@@ -9,6 +9,7 @@ generator client {
 
 enum Role {
   USER
+  MODERATOR
   ADMIN
 }
 
@@ -27,8 +28,14 @@ model User {
   playlists     Playlist[]
   likes         Like[]
   follows       Follow[]
-  playHistories PlayHistory[]
+  playHistories      PlayHistory[]
+  continueListening  ContinueListening[]
+  reports            Report[]
+  auditLogs     AuditLog[]
 
+  @@index([role])
+  @@index([createdAt])
+  @@index([isLocked])
   @@map("users")
 }
 
@@ -57,14 +64,15 @@ model Genre {
 }
 
 model Artist {
-  id        String    @id @default(uuid())
-  name      String
-  bio       String?
-  imageUrl  String?
-  source    String    @default("local")
-  sourceId  String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id         String    @id @default(uuid())
+  name       String
+  bio        String?
+  imageUrl   String?
+  isVerified Boolean   @default(false)
+  source     String    @default("local")
+  sourceId   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   songs     Song[]
   albums    Album[]
@@ -107,6 +115,7 @@ model Song {
   embedId      String?        // YouTube video ID
   previewUrl   String?        // 30s preview URL
   isFullLength Boolean        @default(true)
+  isHidden     Boolean        @default(false)
   lyrics       String?        // LRC format or plaintext
   playCount    Int            @default(0)
   genreId      String?
@@ -123,6 +132,8 @@ model Song {
   @@index([source])
   @@index([genreId])
   @@index([createdAt])
+  @@index([playCount])
+  @@index([isHidden])
   @@map("songs")
 }
 
@@ -132,6 +143,8 @@ model Playlist {
   description String?
   coverUrl    String?
   isPublic    Boolean        @default(true)
+  isPinned    Boolean        @default(false)
+  isBanned    Boolean        @default(false)
   userId      String
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime       @default(now())
@@ -140,6 +153,9 @@ model Playlist {
   songs       PlaylistSong[]
 
   @@index([userId])
+  @@index([isPinned])
+  @@index([isBanned])
+  @@index([createdAt])
   @@map("playlists")
 }
 
@@ -192,6 +208,252 @@ model PlayHistory {
   playedAt  DateTime @default(now())
 
   @@index([userId, playedAt])
+  @@index([playedAt])
+  @@index([songId])
   @@map("play_histories")
 }
+
+model ContinueListening {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId         String
+  progressSeconds Int      @default(0)
+  snapshot        Json
+  playedAt        DateTime @default(now())
+
+  @@unique([userId, trackId])
+  @@index([userId, playedAt])
+  @@map("continue_listening")
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  RESOLVED
+  REJECTED
+}
+
+enum ReportType {
+  COPYRIGHT
+  INAPPROPRIATE
+  SPAM
+  OTHER
+}
+
+model Report {
+  id            String       @id @default(uuid())
+  targetType    String       // "song" | "playlist" | "artist" | "user"
+  targetId      String
+  targetTitle   String?
+  reason        String
+  description   String?
+  type          ReportType   @default(COPYRIGHT)
+  status        ReportStatus @default(PENDING)
+  reporterEmail String?
+  reporterName  String?
+  userId        String?
+  user          User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  internalNotes String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@map("reports")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  userEmail   String?
+  userName    String?
+  action      String   // e.g. "TOGGLE_USER_LOCK", "CHANGE_USER_ROLE", "DELETE_USER", "CREATE_SONG", "UPDATE_SONG", "DELETE_SONG", "CREATE_ARTIST", "UPDATE_ARTIST", "DELETE_ARTIST", "TOGGLE_PLAYLIST_PIN", "TOGGLE_PLAYLIST_BAN", "DELETE_PLAYLIST", "TAKEDOWN_REPORT", "UPDATE_REPORT", "TOGGLE_PROVIDER", "UPDATE_SETTINGS"
+  targetType  String?  // "USER" | "SONG" | "ARTIST" | "PLAYLIST" | "REPORT" | "PROVIDER" | "SYSTEM"
+  targetId    String?
+  targetTitle String?
+  details     String?  // JSON string or notes
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([action])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  key         String   @id
+  value       String   // text or JSON
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// ============================================================================
+// HỆ THỐNG QUẢN LÝ CHATBOT ("Trợ lý mq")
+// ============================================================================
+
+model ChatbotSetting {
+  key       String   @id
+  value     Json
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@map("chatbot_settings")
+}
+
+model PromptVersion {
+  id               String   @id @default(uuid())
+  version          Int      @default(1)
+  content          String
+  status           String   @default("draft") // "draft" | "active" | "archived"
+  note             String?
+  abTrafficPercent Int      @default(0)
+  createdBy        String?
+  createdAt        DateTime @default(now())
+
+  conversations    ChatConversation[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("prompt_versions")
+}
+
+model ChatConversation {
+  id              String          @id @default(uuid())
+  userId          String?
+  userName        String?
+  ipHash          String?
+  startedAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  promptVersionId String?
+  promptVersion   PromptVersion?  @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
+  model           String          @default("gemini-2.0-flash")
+  totalTokenIn    Int             @default(0)
+  totalTokenOut   Int             @default(0)
+  totalTokens     Int             @default(0)
+  cost            Float           @default(0)
+  latencyMs       Int             @default(0)
+  hasError        Boolean         @default(false)
+  hasToolCall     Boolean         @default(false)
+  hasBadFeedback  Boolean         @default(false)
+  flagged         Boolean         @default(false)
+  flagReason      String?
+  flagStatus      String          @default("open") // "open" | "ignored" | "blocked" | "noted"
+  flagNote        String?
+
+  messages        ChatMessageLog[]
+  toolCalls       ChatToolCallLog[]
+
+  @@index([userId])
+  @@index([startedAt])
+  @@index([hasError])
+  @@index([hasToolCall])
+  @@index([hasBadFeedback])
+  @@index([flagged])
+  @@map("conversations")
+}
+
+model ChatMessageLog {
+  id               String            @id @default(uuid())
+  conversationId   String
+  conversation     ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role             String            // "user" | "assistant" | "system"
+  content          String
+  tokenIn          Int               @default(0)
+  tokenOut         Int               @default(0)
+  latencyMs        Int               @default(0)
+  feedback         String?           // "up" | "down"
+  feedbackReason   String?
+  feedbackLabels   String[]          @default([])
+  feedbackResolved Boolean           @default(false)
+  isTestCase       Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+
+  toolCalls        ChatToolCallLog[]
+
+  @@index([conversationId, createdAt])
+  @@index([feedback])
+  @@index([feedbackResolved])
+  @@map("messages")
+}
+
+model ChatToolCallLog {
+  id             String           @id @default(uuid())
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  messageId      String?
+  message        ChatMessageLog?  @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  stepIndex      Int              @default(1)
+  toolName       String
+  args           Json
+  resultSummary  Json
+  status         String           @default("success") // "success" | "error" | "needs_confirmation"
+  durationMs     Int              @default(0)
+  createdAt      DateTime         @default(now())
+
+  @@index([conversationId])
+  @@index([toolName])
+  @@index([status])
+  @@index([createdAt])
+  @@map("tool_calls")
+}
+
+model ChatbotUsageDaily {
+  id             String   @id @default(uuid())
+  date           String   // YYYY-MM-DD
+  model          String
+  tokenIn        Int      @default(0)
+  tokenOut       Int      @default(0)
+  cost           Float    @default(0)
+  requests       Int      @default(0)
+  errors         Int      @default(0)
+  totalLatencyMs Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  @@unique([date, model])
+  @@index([date])
+  @@map("usage_daily")
+}
+
+model BlockedEntity {
+  id        String    @id @default(uuid())
+  type      String    // "user" | "ip"
+  value     String
+  reason    String
+  createdBy String?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([type, value])
+  @@index([type, value])
+  @@index([expiresAt])
+  @@map("blocked_entities")
+}
+
+model FaqEntry {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  source    String?
+  category  String   @default("general")
+  isEnabled Boolean  @default(true)
+  updatedBy String?
+  history   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isEnabled])
+  @@index([category])
+  @@map("faq_entries")
+}
+
+
 

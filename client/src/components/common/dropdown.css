@@ -1,0 +1,149 @@
+/* ==========================================================================
+   Shared SelectDropdown Design Tokens — Biến CSS dễ tinh chỉnh
+   ========================================================================== */
+
+:root {
+  --dd-trigger-radius: 9999px;
+  --dd-panel-radius: 12px;
+  --dd-item-radius: 8px;
+  --dd-panel-padding: 6px;
+
+  /* Light Mode Tokens */
+  --dd-trigger-bg: #ffffff;
+  --dd-trigger-bg-hover: #f8fafc;
+  --dd-trigger-bg-open: #f1f5f9;
+  --dd-trigger-border: rgba(0, 0, 0, 0.12);
+  --dd-trigger-border-open: rgba(0, 0, 0, 0.28);
+  --dd-trigger-text: #0f172a;
+  --dd-trigger-placeholder: #64748b;
+
+  --dd-panel-bg: #ffffff;
+  --dd-panel-border: rgba(0, 0, 0, 0.09);
+  --dd-panel-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.16), 0 4px 12px -2px rgba(0, 0, 0, 0.06);
+
+  --dd-item-text: #334155;
+  --dd-item-text-active: #0284c7;
+  --dd-item-highlight-bg: rgba(0, 0, 0, 0.055);
+  --dd-item-selected-bg: rgba(2, 132, 199, 0.08);
+  --dd-accent: #0284c7;
+  --dd-focus-ring: rgba(2, 132, 199, 0.45);
+  --dd-scrollbar-thumb: rgba(0, 0, 0, 0.18);
+}
+
+html.dark,
+.dark {
+  /* Dark Mode Tokens — Nền nút hơi sáng hơn nền trang, panel #1f1f1f */
+  --dd-trigger-bg: rgba(255, 255, 255, 0.07);
+  --dd-trigger-bg-hover: rgba(255, 255, 255, 0.11);
+  --dd-trigger-bg-open: rgba(255, 255, 255, 0.14);
+  --dd-trigger-border: rgba(255, 255, 255, 0.11);
+  --dd-trigger-border-open: rgba(255, 255, 255, 0.28);
+  --dd-trigger-text: #ffffff;
+  --dd-trigger-placeholder: rgba(255, 255, 255, 0.55);
+
+  --dd-panel-bg: #1f1f1f;
+  --dd-panel-border: rgba(255, 255, 255, 0.12);
+  --dd-panel-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.72), 0 4px 14px -2px rgba(0, 0, 0, 0.45);
+
+  --dd-item-text: rgba(255, 255, 255, 0.85);
+  --dd-item-text-active: #38bdf8;
+  --dd-item-highlight-bg: rgba(255, 255, 255, 0.09);
+  --dd-item-selected-bg: rgba(56, 189, 248, 0.12);
+  --dd-accent: #38bdf8;
+  --dd-focus-ring: rgba(56, 189, 248, 0.5);
+  --dd-scrollbar-thumb: rgba(255, 255, 255, 0.2);
+}
+
+.dd-trigger {
+  border-radius: var(--dd-trigger-radius);
+  background: var(--dd-trigger-bg);
+  border: 1px solid var(--dd-trigger-border);
+  color: var(--dd-trigger-text);
+  transition:
+    background-color 180ms cubic-bezier(0.32, 0.72, 0, 1),
+    border-color 180ms cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 180ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.dd-trigger:hover:not(:disabled) {
+  background: var(--dd-trigger-bg-hover);
+}
+
+.dd-trigger[aria-expanded="true"] {
+  background: var(--dd-trigger-bg-open);
+  border-color: var(--dd-trigger-border-open);
+}
+
+.dd-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dd-focus-ring);
+}
+
+.dd-panel {
+  border-radius: var(--dd-panel-radius);
+  background: var(--dd-panel-bg);
+  border: 1px solid var(--dd-panel-border);
+  box-shadow: var(--dd-panel-shadow);
+  padding: var(--dd-panel-padding);
+  backdrop-filter: blur(16px);
+}
+
+.dd-list {
+  position: relative;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dd-scrollbar-thumb) transparent;
+}
+
+.dd-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.dd-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dd-list::-webkit-scrollbar-thumb {
+  background: var(--dd-scrollbar-thumb);
+  border-radius: 9999px;
+}
+
+.dd-item {
+  position: relative;
+  z-index: 2;
+  border-radius: var(--dd-item-radius);
+  color: var(--dd-item-text);
+  transition: color 140ms ease;
+}
+
+.dd-item[data-selected="true"] {
+  color: var(--dd-item-text-active);
+  font-weight: 600;
+}
+
+.dd-item[data-highlighted="true"] {
+  outline: 1.5px solid transparent;
+}
+
+.dd-item[data-keyboard-focus="true"] {
+  outline: 1.5px solid var(--dd-focus-ring);
+  outline-offset: -1px;
+}
+
+.dd-highlight-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 1;
+  border-radius: var(--dd-item-radius);
+  background: var(--dd-item-highlight-bg);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dd-trigger,
+  .dd-item {
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,20 +1,20 @@
 import React, { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Play, Disc3, Calendar } from 'lucide-react';
 import { api } from '../api/client.js';
 import { usePlayerStore } from '../stores/player-store.js';
 import { SongRow } from '../components/song/SongRow.js';
 import { Button } from '../components/common/Button.js';
+import { AlbumDetailSkeleton, LoadingRegion } from '../components/common/Loading.js';
 import { formatDate, formatAlbumArtist } from '../utils/format.js';
 import { Album, UnifiedTrack } from '../types/index.js';
 
 export const AlbumDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { playTrack } = usePlayerStore();
 
-  const { data: album, isLoading } = useQuery({
+  const { data: album, isLoading, isError, refetch } = useQuery({
     queryKey: ['album', id],
     queryFn: async () => {
       const res = await api.get(`/albums/${id}`);
@@ -29,30 +29,21 @@ export const AlbumDetailPage: React.FC = () => {
     if (document.body) document.body.scrollTop = 0;
   }, [id, album]);
 
-  if (isLoading) {
-    return (
-      <div className="py-20 text-center text-mute space-y-3">
-        <span className="w-8 h-8 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
-        <p className="text-sm">Đang tải album...</p>
-      </div>
-    );
-  }
-
-  if (!album) {
-    return (
-      <div className="py-20 text-center text-mute space-y-3">
-        <p className="text-base font-semibold">Không tìm thấy album.</p>
-        <Button size="sm" onClick={() => navigate('/')}>
-          Về trang chủ
-        </Button>
-      </div>
-    );
-  }
-
-  const trackCount = album.tracks?.length ?? album.tracksCount ?? 0;
+  const trackCount = album?.tracks?.length ?? album?.tracksCount ?? 0;
 
   return (
-    <div className="space-y-8 pb-12 max-w-7xl mx-auto">
+    <LoadingRegion
+      isLoading={isLoading}
+      isError={isError || (!isLoading && !album)}
+      onRetry={() => refetch()}
+      skeleton={<AlbumDetailSkeleton />}
+      loadingLabel="Đang tải album"
+      errorTitle="Không tải được album"
+      errorDescription="Không tìm thấy album hoặc kết nối tạm thời gián đoạn."
+      className="max-w-7xl mx-auto"
+    >
+      {album && (
+        <div className="space-y-8 pb-12">
       {/* Banner */}
       <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 p-6 rounded-card border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-surface-dark-soft">
         <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-xl overflow-hidden bg-neutral-200 dark:bg-neutral-800 shadow-md shrink-0 flex items-center justify-center">
@@ -124,6 +115,8 @@ export const AlbumDetailPage: React.FC = () => {
         )}
       </div>
     </div>
+      )}
+    </LoadingRegion>
   );
 };
 

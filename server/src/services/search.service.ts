@@ -157,10 +157,23 @@ export class SearchService {
       return bIsSpotify - aIsSpotify;
     });
 
-    // 5. Deduplicate artists by normalized name
+    // 5. Chỉ giữ nghệ sĩ có thật (Spotify hoặc nghệ sĩ nội bộ có bài hát/ảnh thật), gộp trùng không dấu/khoảng trắng
+    const normalizeArtistKey = (name: string) => removeAccents(name).replace(/[^a-z0-9]/g, '');
+    const sortedArtists = [...mergedArtists]
+      .filter((a) => a.source === 'spotify' || (a.source === 'local' && Boolean(a.imageUrl)))
+      .sort((a, b) => {
+        const score = (item: UnifiedArtist) =>
+          (item.imageUrl ? 4 : 0) +
+          (item.followersCount ? 2 : 0) +
+          (item.source === 'spotify' ? 3 : 1);
+        return score(b) - score(a);
+      });
+
     const uniqueArtists: UnifiedArtist[] = [];
-    for (const a of mergedArtists) {
-      if (!uniqueArtists.some((x) => removeAccents(x.name) === removeAccents(a.name))) {
+    for (const a of sortedArtists) {
+      const key = normalizeArtistKey(a.name);
+      if (!key) continue;
+      if (!uniqueArtists.some((x) => normalizeArtistKey(x.name) === key)) {
         uniqueArtists.push(a);
       }
     }

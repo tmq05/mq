@@ -5,6 +5,7 @@ import { requireAuth, optionalAuth } from '../middlewares/auth.middleware.js';
 const router = Router();
 
 router.get('/', requireAuth, playlistController.getUserPlaylists);
+router.get('/public', playlistController.getPublicPlaylists);
 router.post('/', requireAuth, playlistController.create);
 router.get('/:id', optionalAuth, playlistController.getById);
 router.patch('/:id', requireAuth, playlistController.update);

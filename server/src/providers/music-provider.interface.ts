@@ -25,6 +25,7 @@ export interface UnifiedTrack {
   previewUrl?: string; // 30s preview URL
   isFullLength: boolean;
   lyrics?: string;
+  playCount?: number;
 }
 
 export interface UnifiedArtist {

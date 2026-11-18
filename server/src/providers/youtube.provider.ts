@@ -9,6 +9,18 @@ import {
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_m, dec) => String.fromCharCode(Number(dec)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_m, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
 export class YouTubeProvider implements MusicProvider {
   readonly name: MusicSource = 'youtube';
   private quotaExceeded = false;
@@ -28,8 +40,8 @@ export class YouTubeProvider implements MusicProvider {
 
   private mapVideo(item: any): UnifiedTrack {
     const videoId = typeof item.id === 'string' ? item.id : item.id?.videoId;
-    const title = item.snippet?.title || 'YouTube Video';
-    const channelTitle = item.snippet?.channelTitle || 'YouTube Music';
+    const title = decodeHtmlEntities(item.snippet?.title || 'YouTube Video');
+    const channelTitle = decodeHtmlEntities(item.snippet?.channelTitle || 'YouTube Music');
     const coverUrl =
       item.snippet?.thumbnails?.high?.url ||
       item.snippet?.thumbnails?.medium?.url ||

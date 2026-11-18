@@ -1,0 +1,35 @@
+/* ==========================================================================
+   Expandable Grid & Hover Tokens — Biến CSS dễ tinh chỉnh
+   ========================================================================== */
+
+.exp-grid-root {
+  --exp-hover-lift: -4px;
+  --exp-hover-duration: 250ms;
+  --exp-hover-easing: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.exp-card-hover {
+  transition:
+    transform var(--exp-hover-duration) var(--exp-hover-easing),
+    box-shadow var(--exp-hover-duration) var(--exp-hover-easing);
+  will-change: transform;
+}
+
+.exp-card-hover:hover {
+  transform: translateY(var(--exp-hover-lift));
+}
+
+.exp-card-art {
+  transition: transform var(--exp-hover-duration) var(--exp-hover-easing);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exp-card-hover,
+  .exp-card-art {
+    transition-duration: 0.01ms !important;
+  }
+
+  .exp-card-hover:hover {
+    transform: none;
+  }
+}

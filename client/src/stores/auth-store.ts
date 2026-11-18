@@ -16,7 +16,9 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: localStorage.getItem('mq_access_token'),
+  token: typeof window !== 'undefined' && typeof localStorage !== 'undefined'
+    ? localStorage.getItem('mq_access_token')
+    : null,
   isLoading: true,
   isAuthenticated: false,
 

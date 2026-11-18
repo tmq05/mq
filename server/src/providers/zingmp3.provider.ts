@@ -136,20 +136,13 @@ export class ZingMp3Provider implements MusicProvider {
 
   async getStreamInfo(sourceId: string): Promise<StreamInfo | null> {
     const track = await this.getTrack(sourceId);
-    if (track) {
-      const vid = await resolveExactFullTrack(track.title, track.artists[0] || '');
-      if (vid) {
-        return {
-          playbackType: 'youtube',
-          embedId: vid,
-        };
-      }
-    }
+    if (!track) return null;
+
     return {
       playbackType: 'audio',
       embedId: sourceId,
-      streamUrl: track?.streamUrl || `/api/songs/zingmp3:${sourceId}/stream`,
-      previewUrl: track?.previewUrl || `/api/songs/zingmp3:${sourceId}/stream`,
+      streamUrl: track.streamUrl || `/api/songs/zingmp3:${sourceId}/stream`,
+      previewUrl: track.previewUrl || `/api/songs/zingmp3:${sourceId}/stream`,
     };
   }
 }

@@ -1,25 +1,49 @@
-import React, { useState } from 'react';
-import { Play, Pause, Headphones, Heart, Plus } from 'lucide-react';
+import React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Play, Pause, Headphones, Plus } from 'lucide-react';
+import { AnimatedHeartIcon } from '../common/ActionButtonFX.js';
 import { UnifiedTrack } from '../../types/index.js';
 import { usePlayerStore } from '../../stores/player-store.js';
 import { useAuthStore } from '../../stores/auth-store.js';
+import { useAuthModalStore } from '../../stores/auth-modal-store.js';
 import { usePlaylistModalStore } from '../../stores/playlist-modal-store.js';
+import { useLikesStore } from '../../stores/likes-store.js';
 import { SourceBadge } from '../common/Badge.js';
 import { formatArtists, formatPlays, getTrackPlayCount, cleanDisplayTitle } from '../../utils/format.js';
-import { api } from '../../api/client.js';
 
 interface SongCardProps {
   track: UnifiedTrack;
   queueContext?: UnifiedTrack[];
+  variant?: 'default' | 'bento' | 'compact';
+  compactBadges?: boolean;
+  highlightBadge?: string;
 }
 
-export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
+const SOURCE_LABELS_COMPACT: Record<string, string> = {
+  spotify: 'Spotify',
+  zingmp3: 'Zing MP3',
+  youtube: 'YouTube',
+  audius: 'Audius',
+  jamendo: 'Jamendo',
+  itunes: 'Apple Music',
+};
+
+export const SongCard: React.FC<SongCardProps> = ({
+  track,
+  queueContext,
+  variant = 'default',
+  compactBadges = false,
+  highlightBadge,
+}) => {
+  const queryClient = useQueryClient();
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const { isAuthenticated } = useAuthStore();
+  const { openAuthModal } = useAuthModalStore();
   const { openModal: openPlaylistModal } = usePlaylistModalStore();
 
-  const [isLiked, setIsLiked] = useState(false);
-  const [isLiking, setIsLiking] = useState(false);
+  const isLiked = useLikesStore((s) => s.isTrackLiked(track));
+  const isLiking = useLikesStore((s) => s.isTrackPending(track));
+  const toggleLike = useLikesStore((s) => s.toggleLike);
 
   const isCurrent = currentTrack?.id === track.id;
   const playCount = getTrackPlayCount(track);
@@ -37,19 +61,17 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
   const handleToggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated) {
-      alert('Vui lòng đăng nhập để lưu bài hát yêu thích');
+      openAuthModal({
+        title: 'Lưu bài hát yêu thích',
+        message: `Đăng nhập để lưu "${displayTitle}" vào danh sách bài hát yêu thích của bạn.`,
+        iconType: 'heart',
+      });
       return;
     }
     if (isLiking) return;
-    setIsLiking(true);
-    try {
-      const res = await api.post('/songs/like', { track });
-      setIsLiked(res.data?.isLiked ?? !isLiked);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLiking(false);
-    }
+    await toggleLike(track);
+    queryClient.invalidateQueries({ queryKey: ['user-likes'] });
+    queryClient.invalidateQueries({ queryKey: ['user-stats'] });
   };
 
   const handleAddToPlaylist = (e: React.MouseEvent) => {
@@ -57,13 +79,31 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
     openPlaylistModal(track);
   };
 
+  const sourceLabel = track.source ? SOURCE_LABELS_COMPACT[track.source] : undefined;
+  const isFullTrack = track.isFullLength !== false;
+  const badgeTooltip = [sourceLabel, isFullTrack ? 'Full track' : 'Bản nghe thử (30s)']
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <div
       onClick={handlePlayClick}
-      className="group relative flex flex-col p-3 rounded-card border border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card hover:bg-surface-soft dark:hover:bg-surface-dark-soft transition-all duration-200 cursor-pointer"
+      className={`group relative h-full flex ${
+        variant === 'bento' ? 'flex-col sm:flex-row sm:items-stretch gap-3.5 p-3.5' : 'flex-col p-3'
+      } rounded-card border transition-all duration-200 cursor-pointer ${
+        isCurrent
+          ? 'border-traffic-green/70 bg-traffic-green/5 dark:bg-traffic-green/10 shadow-sm'
+          : 'border-hairline dark:border-hairline-dark bg-canvas dark:bg-surface-dark-card hover:bg-surface-soft dark:hover:bg-surface-dark-soft hover:border-hairline-strong dark:hover:border-white/20'
+      }`}
     >
       {/* Cover Image Container */}
-      <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-surface-soft dark:bg-surface-dark-soft mb-3">
+      <div
+        className={`relative overflow-hidden bg-surface-soft dark:bg-surface-dark-soft shrink-0 ${
+          variant === 'bento'
+            ? 'aspect-square w-full sm:w-44 sm:h-44 rounded-xl mb-0'
+            : 'aspect-square w-full rounded-lg mb-3'
+        }`}
+      >
         <img
           src={
             track.coverUrl ||
@@ -78,6 +118,31 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
           }}
         />
 
+        {/* Compact Top-Left Source / Rank Badge */}
+        {(compactBadges || highlightBadge) && (
+          <div className="absolute top-2 left-2 z-10 flex items-center gap-1 max-w-[calc(100%-4.5rem)]">
+            {highlightBadge && (
+              <span className="px-2 py-0.5 rounded-pill bg-traffic-green text-black font-sans font-bold text-[10px] tracking-wide shadow-sm whitespace-nowrap">
+                {highlightBadge}
+              </span>
+            )}
+            {compactBadges && sourceLabel && (
+              <span
+                title={badgeTooltip}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill bg-black/65 backdrop-blur-md text-white border border-white/15 text-[10px] font-medium whitespace-nowrap"
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    isFullTrack ? 'bg-traffic-green' : 'bg-amber-400'
+                  }`}
+                />
+                <span>{sourceLabel}</span>
+                {!isFullTrack && <span className="text-amber-300">· Preview</span>}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Top-Right Quick Action Icons (Like & Add to Playlist) */}
         <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <button
@@ -89,7 +154,7 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
             title={isLiked ? 'Bỏ thích' : 'Yêu thích bài hát'}
             aria-label="Thích"
           >
-            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
+            <AnimatedHeartIcon liked={isLiked} className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={handleAddToPlaylist}
@@ -120,26 +185,50 @@ export const SongCard: React.FC<SongCardProps> = ({ track, queueContext }) => {
       </div>
 
       {/* Info */}
-      <div className="flex flex-col min-w-0">
-        <h4
-          className={`font-semibold text-sm truncate mb-0.5 ${
-            isCurrent ? 'text-black dark:text-white font-bold' : 'text-neutral-900 dark:text-white'
-          }`}
-          title={track.title}
-        >
-          {displayTitle}
-        </h4>
-        <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate mb-2">
-          {formatArtists(track.artists)}
-        </p>
+      <div className="flex flex-col flex-1 min-w-0 justify-between">
+        <div>
+          {variant === 'bento' && (
+            <span className="hidden sm:inline-block text-[10px] font-semibold uppercase tracking-wider text-traffic-green mb-1">
+              Nổi bật hôm nay
+            </span>
+          )}
+          <h4
+            className={`font-semibold truncate mb-0.5 ${
+              variant === 'bento' ? 'text-base sm:text-lg leading-snug' : 'text-sm'
+            } ${
+              isCurrent ? 'text-black dark:text-white font-bold' : 'text-neutral-900 dark:text-white'
+            }`}
+            title={track.title}
+          >
+            {displayTitle}
+          </h4>
+          <p
+            className={`text-neutral-600 dark:text-neutral-300 truncate ${
+              variant === 'bento' ? 'text-xs sm:text-sm mb-3' : 'text-xs mb-2'
+            }`}
+          >
+            {formatArtists(track.artists)}
+          </p>
+          {variant === 'bento' && track.album && track.album !== '—' && (
+            <p className="hidden sm:block text-xs text-mute truncate">
+              Album: {track.album}
+            </p>
+          )}
+        </div>
 
-        <div className="mt-auto flex items-center justify-between gap-1 pt-1">
-          <SourceBadge isFullLength={track.isFullLength} source={track.source} />
+        <div className="mt-auto flex items-center justify-between gap-2 pt-1 min-w-0">
+          {!compactBadges ? (
+            <SourceBadge isFullLength={track.isFullLength} source={track.source} />
+          ) : (
+            <span className="text-[11px] font-medium text-traffic-green opacity-0 group-hover:opacity-100 transition-opacity">
+              {isCurrent && isPlaying ? 'Đang phát' : 'Nhấn để phát'}
+            </span>
+          )}
           <span
-            className="inline-flex items-center gap-1 text-[11px] font-sans font-medium tabular-nums text-neutral-500 dark:text-neutral-400"
+            className="inline-flex items-center gap-1 text-[10px] font-sans font-medium tabular-nums text-neutral-500 dark:text-neutral-400 whitespace-nowrap shrink-0"
             title={`${playCount.toLocaleString('vi-VN')} lượt nghe`}
           >
-            <Headphones className="w-3 h-3 opacity-60" />
+            <Headphones className="w-3 h-3 opacity-60 shrink-0" />
             <span>{formatPlays(playCount)}</span>
           </span>
         </div>

@@ -85,9 +85,9 @@ export const CreditsPage: React.FC = () => {
           <span className="w-2.5 h-2.5 rounded-full bg-traffic-red" />
           <span className="w-2.5 h-2.5 rounded-full bg-traffic-yellow" />
           <span className="w-2.5 h-2.5 rounded-full bg-traffic-green" />
-          <span className="ml-2 text-xs font-mono text-mute">mq-compliance-policy.txt</span>
+          <span className="ml-2 text-xs font-sans text-mute">mq-compliance-policy.txt</span>
         </div>
-        <div className="font-mono text-xs text-body dark:text-mute space-y-1">
+        <div className="font-sans text-xs text-body dark:text-mute space-y-1">
           <p className="text-ink dark:text-white font-medium">
             # Nguyên tắc hoạt động kỹ thuật của mq:
           </p>

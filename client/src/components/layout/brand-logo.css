@@ -1,0 +1,203 @@
+/* ==========================================================================
+   BrandLogo ("mq" + chấm xanh) — Design Tokens tách riêng dễ tinh chỉnh
+   ========================================================================== */
+
+.mq-logo {
+  --logo-font-size: 27px;
+  --logo-font-size-mobile: 24px;
+  --logo-font-weight: 800;
+  --logo-letter-spacing: -0.03em;
+
+  --logo-dot-size: 7.5px;
+  --logo-dot-size-mobile: 6.5px;
+  --logo-dot-color: #1ed760;
+  --logo-dot-glow: 0 0 8px rgba(30, 215, 96, 0.5);
+  --logo-dot-glow-hover: 0 0 11px rgba(30, 215, 96, 0.75);
+
+  --logo-word-start: #0f172a;
+  --logo-word-end: #334155;
+  --logo-word-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+
+  --logo-pulse-idle: 3s;
+  --logo-pulse-playing: 1.15s;
+  --logo-hover-duration: 250ms;
+  --logo-focus-ring: rgba(30, 215, 96, 0.55);
+
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 4px 6px;
+  margin-left: -6px;
+  border-radius: 10px;
+  text-decoration: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.dark .mq-logo,
+.dark .mq-logo {
+  --logo-word-start: #ffffff;
+  --logo-word-end: #dedee3;
+  --logo-word-shadow: 0 1px 6px rgba(255, 255, 255, 0.08);
+}
+
+.mq-logo:focus-visible {
+  outline: 2px solid var(--logo-focus-ring);
+  outline-offset: 2px;
+}
+
+.mq-logo__wordmark {
+  display: inline-block;
+  font-size: var(--logo-font-size-mobile);
+  font-weight: var(--logo-font-weight);
+  letter-spacing: var(--logo-letter-spacing);
+  line-height: 1;
+  background-image: linear-gradient(180deg, var(--logo-word-start) 0%, var(--logo-word-end) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: var(--logo-word-shadow);
+  transition:
+    transform var(--logo-hover-duration) cubic-bezier(0.32, 0.72, 0, 1),
+    filter var(--logo-hover-duration) ease;
+}
+
+@media (min-width: 768px) {
+  .mq-logo__wordmark {
+    font-size: var(--logo-font-size);
+  }
+}
+
+.mq-logo--interactive:hover .mq-logo__wordmark {
+  transform: translateX(1px);
+  filter: brightness(1.06);
+}
+
+/* Chấm xanh trạng thái căn chuẩn theo x-height / góc phải trên của "mq" */
+.mq-logo__dot-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--logo-dot-size-mobile);
+  height: var(--logo-dot-size-mobile);
+  margin-top: 2px;
+  flex-shrink: 0;
+  transition: transform var(--logo-hover-duration) cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (min-width: 768px) {
+  .mq-logo__dot-wrap {
+    width: var(--logo-dot-size);
+    height: var(--logo-dot-size);
+    margin-top: 2.5px;
+  }
+}
+
+.mq-logo__dot {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  background-color: var(--logo-dot-color);
+  box-shadow: var(--logo-dot-glow);
+}
+
+/* Halo glow riêng dùng transform + opacity (GPU 60fps, không tràn > 12px) */
+.mq-logo__dot-halo {
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(30, 215, 96, 0.45) 0%, rgba(30, 215, 96, 0) 70%);
+  opacity: 0.45;
+  pointer-events: none;
+  transition:
+    opacity var(--logo-hover-duration) ease,
+    transform var(--logo-hover-duration) cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.mq-logo--interactive:hover .mq-logo__dot-wrap {
+  transform: scale(1.25);
+}
+
+.mq-logo--interactive:hover .mq-logo__dot {
+  box-shadow: var(--logo-dot-glow-hover);
+}
+
+.mq-logo--interactive:hover .mq-logo__dot-halo {
+  opacity: 0.85;
+  transform: scale(1.15);
+}
+
+/* Nhịp thở chậm (3s) khi rảnh & nhịp nhẹ (1.15s) khi đang phát nhạc */
+@keyframes mq-logo-dot-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes mq-logo-halo-breathe {
+  0%,
+  100% {
+    transform: scale(0.95);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.22);
+    opacity: 0.75;
+  }
+}
+
+.mq-logo--animated .mq-logo__dot {
+  animation: mq-logo-dot-breathe var(--logo-pulse-idle) ease-in-out infinite;
+}
+
+.mq-logo--animated .mq-logo__dot-halo {
+  animation: mq-logo-halo-breathe var(--logo-pulse-idle) ease-in-out infinite;
+}
+
+.mq-logo--playing.mq-logo--animated .mq-logo__dot {
+  animation-duration: var(--logo-pulse-playing);
+}
+
+.mq-logo--playing.mq-logo--animated .mq-logo__dot-halo {
+  animation-duration: var(--logo-pulse-playing);
+}
+
+/* Đường kẻ dọc tách nhóm logo với thanh điều hướng */
+.mq-logo-divider {
+  width: 1px;
+  height: 20px;
+  background-color: rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+html.dark .mq-logo-divider,
+.dark .mq-logo-divider {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 767px) {
+  .mq-logo--animated .mq-logo__dot-halo {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mq-logo__wordmark,
+  .mq-logo__dot-wrap,
+  .mq-logo__dot,
+  .mq-logo__dot-halo {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

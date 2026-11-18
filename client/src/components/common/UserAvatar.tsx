@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface UserAvatarProps {
   name?: string;
@@ -54,6 +54,10 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 }) => {
   const [hasError, setHasError] = useState(false);
 
+  useEffect(() => {
+    setHasError(false);
+  }, [avatarUrl]);
+
   const initials = getInitials(name);
   const gradient = getGradient(name);
   const sizeClasses = SIZE_MAP[size] || SIZE_MAP.md;
@@ -67,8 +71,10 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
     >
       {showImage ? (
         <img
+          key={avatarUrl as string}
           src={avatarUrl as string}
           alt={name || 'Avatar'}
+          referrerPolicy="no-referrer"
           className="w-full h-full object-cover"
           onError={() => setHasError(true)}
         />

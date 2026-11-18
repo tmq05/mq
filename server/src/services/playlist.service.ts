@@ -1,21 +1,53 @@
 import { prisma } from '../config/prisma.js';
 import { UnifiedTrack } from '../providers/music-provider.interface.js';
 import { songService } from './song.service.js';
+import { assertNoProfanity } from '../utils/profanity-filter.js';
 
 export class PlaylistService {
   async createPlaylist(
     userId: string,
-    data: { title: string; description?: string; isPublic?: boolean; coverUrl?: string }
+    data: {
+      title: string;
+      description?: string;
+      isPublic?: boolean;
+      coverUrl?: string;
+      tracks?: UnifiedTrack[];
+    },
+    options?: { requireMinTracks?: boolean }
   ) {
-    return prisma.playlist.create({
+    assertNoProfanity([
+      { label: 'Tên playlist', value: data.title },
+      { label: 'Mô tả playlist', value: data.description },
+    ]);
+
+    const tracks = Array.isArray(data.tracks) ? data.tracks : [];
+    if (options?.requireMinTracks && tracks.length < 1) {
+      const err = new Error('Vui lòng chọn ít nhất 1 bài hát để tạo playlist.') as Error & {
+        statusCode?: number;
+      };
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const created = await prisma.playlist.create({
       data: {
         userId,
         title: data.title,
         description: data.description,
         isPublic: data.isPublic ?? true,
-        coverUrl: data.coverUrl,
+        coverUrl: data.coverUrl || tracks[0]?.coverUrl,
       },
     });
+
+    for (const track of tracks) {
+      try {
+        await this.addSong(userId, created.id, track);
+      } catch {
+        // Bỏ qua bài lỗi lẻ để không làm hỏng quá trình tạo playlist
+      }
+    }
+
+    return created;
   }
 
   async updatePlaylist(
@@ -34,6 +66,11 @@ export class PlaylistService {
     if (playlist.userId !== userId) {
       throw new Error('Bạn không có quyền chỉnh sửa playlist này');
     }
+
+    assertNoProfanity([
+      { label: 'Tên playlist', value: data.title },
+      { label: 'Mô tả playlist', value: data.description },
+    ]);
 
     return prisma.playlist.update({
       where: { id: playlistId },
@@ -155,6 +192,10 @@ export class PlaylistService {
       throw new Error('Playlist không tồn tại');
     }
 
+    if (playlist.isBanned && playlist.userId !== currentUserId) {
+      throw new Error('Playlist này đã bị gỡ do vi phạm');
+    }
+
     if (!playlist.isPublic && playlist.userId !== currentUserId) {
       throw new Error('Playlist này đang ở chế độ riêng tư');
     }
@@ -186,8 +227,34 @@ export class PlaylistService {
       where: { userId },
       include: {
         _count: { select: { songs: true } },
+        songs: {
+          take: 4,
+          orderBy: { order: 'asc' },
+          include: {
+            song: {
+              select: { coverUrl: true },
+            },
+          },
+        },
       },
       orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async getPublicPlaylists(options: { pinnedOnly?: boolean; limit?: number } = {}) {
+    const take = Math.max(1, Math.min(50, options.limit || 20));
+    return prisma.playlist.findMany({
+      where: {
+        isPublic: true,
+        isBanned: false,
+        ...(options.pinnedOnly ? { isPinned: true } : {}),
+      },
+      include: {
+        user: { select: { id: true, name: true, avatarUrl: true } },
+        _count: { select: { songs: true } },
+      },
+      orderBy: [{ isPinned: 'desc' }, { updatedAt: 'desc' }],
+      take,
     });
   }
 }

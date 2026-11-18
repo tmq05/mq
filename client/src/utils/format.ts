@@ -86,9 +86,21 @@ export function getTrackPlayCount(track: { id?: string; title?: string; playCoun
   return 1200000 + (abs % 38600000);
 }
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_m, dec) => String.fromCharCode(Number(dec)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_m, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
 export function cleanDisplayTitle(title?: string): string {
   if (!title) return '';
-  let clean = title;
+  let clean = decodeHtmlEntities(title);
   // Remove trailing "- AM Remix", "- Remastered", "- Maxi Single", "- Single", "- EP"
   clean = clean.replace(
     /\s*-\s*(am remix|remastered|maxi single|single|ep|album|official audio|audio|nhacpro remix).*$/gi,

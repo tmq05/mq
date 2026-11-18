@@ -61,7 +61,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
 
             {this.state.error && (
-              <details className="text-left bg-black/5 dark:bg-black/40 p-3 rounded-lg border border-hairline dark:border-hairline-dark text-[11px] font-mono text-red-600 dark:text-red-300 overflow-x-auto">
+              <details className="text-left bg-black/5 dark:bg-black/40 p-3 rounded-lg border border-hairline dark:border-hairline-dark text-[11px] font-sans text-red-600 dark:text-red-300 overflow-x-auto">
                 <summary className="cursor-pointer font-sans font-medium text-mute hover:text-ink dark:hover:text-white select-none">
                   Chi tiết kỹ thuật
                 </summary>

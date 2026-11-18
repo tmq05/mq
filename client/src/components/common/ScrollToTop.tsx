@@ -18,13 +18,15 @@ export const ScrollToTop: React.FC = () => {
 
     resetScroll();
 
-    // Re-verify on next animation frame and after short delay when async data or DOM updates occur
+    // Re-verify on next animation frame and after route exit/enter transition finishes
     const rafId = requestAnimationFrame(resetScroll);
-    const timer = setTimeout(resetScroll, 60);
+    const timer1 = setTimeout(resetScroll, 60);
+    const timer2 = setTimeout(resetScroll, 180);
 
     return () => {
       cancelAnimationFrame(rafId);
-      clearTimeout(timer);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
     };
   }, [pathname]);
 

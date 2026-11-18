@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Play, Trash2, ListMusic, Plus } from 'lucide-react';
+import { Play, Trash2, ListMusic, Plus, AlertTriangle } from 'lucide-react';
 import { api } from '../api/client.js';
 import { useAuthStore } from '../stores/auth-store.js';
 import { usePlayerStore } from '../stores/player-store.js';
 import { SongRow } from '../components/song/SongRow.js';
 import { Button } from '../components/common/Button.js';
+import { Modal, ModalSection } from '../components/common/Modal.js';
+import { AlbumDetailSkeleton, LoadingRegion } from '../components/common/Loading.js';
 import { Playlist, UnifiedTrack } from '../types/index.js';
 import { formatArtists } from '../utils/format.js';
 
@@ -20,8 +22,9 @@ export const PlaylistDetailPage: React.FC = () => {
   const [searchSongQuery, setSearchSongQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UnifiedTrack[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  const { data: playlist, isLoading } = useQuery({
+  const { data: playlist, isLoading, isError, refetch } = useQuery({
     queryKey: ['playlist', id],
     queryFn: async () => {
       const res = await api.get(`/playlists/${id}`);
@@ -79,28 +82,19 @@ export const PlaylistDetailPage: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="py-20 text-center text-mute space-y-3">
-        <span className="w-8 h-8 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
-        <p className="text-sm">Đang tải playlist...</p>
-      </div>
-    );
-  }
-
-  if (!playlist) {
-    return (
-      <div className="py-20 text-center text-mute space-y-3">
-        <p className="text-base font-semibold">Không tìm thấy playlist hoặc playlist này ở chế độ riêng tư.</p>
-        <Button size="sm" onClick={() => navigate('/library')}>
-          Quay lại thư viện
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8 pb-12 max-w-7xl mx-auto">
+    <LoadingRegion
+      isLoading={isLoading}
+      isError={isError || (!isLoading && !playlist)}
+      onRetry={() => refetch()}
+      skeleton={<AlbumDetailSkeleton />}
+      loadingLabel="Đang tải playlist"
+      errorTitle="Không tải được playlist"
+      errorDescription="Không tìm thấy playlist hoặc playlist này đang ở chế độ riêng tư."
+      className="max-w-7xl mx-auto"
+    >
+      {playlist && (
+        <div className="space-y-8 pb-12">
       {/* Playlist Banner Header */}
       <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 p-6 rounded-card border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-surface-dark-soft">
         <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-xl overflow-hidden bg-neutral-200 dark:bg-neutral-800 shadow-md shrink-0 flex items-center justify-center">
@@ -140,11 +134,7 @@ export const PlaylistDetailPage: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  if (confirm('Bạn có chắc muốn xóa playlist này?')) {
-                    deleteMutation.mutate();
-                  }
-                }}
+                onClick={() => setDeleteModalOpen(true)}
                 className="text-red-500 hover:text-red-600"
                 icon={<Trash2 className="w-4 h-4" />}
               >
@@ -233,6 +223,46 @@ export const PlaylistDetailPage: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Modal xác nhận xóa playlist */}
+      <Modal
+        open={deleteModalOpen}
+        onClose={() => {
+          if (!deleteMutation.isPending) setDeleteModalOpen(false);
+        }}
+        title="Xác nhận xóa playlist"
+        icon={<AlertTriangle className="w-5 h-5 text-red-500" />}
+        size="sm"
+        bodyClassName="p-5 sm:p-6 space-y-5"
+      >
+        <ModalSection index={0}>
+          <p className="text-sm text-mute leading-relaxed">
+            Bạn có chắc chắn muốn xóa playlist{' '}
+            <strong className="text-ink dark:text-white">{playlist.title}</strong>? Hành động này
+            không thể hoàn tác.
+          </p>
+        </ModalSection>
+        <ModalSection index={1} className="flex justify-end gap-2.5 pt-1">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setDeleteModalOpen(false)}
+            disabled={deleteMutation.isPending}
+          >
+            Hủy
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => deleteMutation.mutate()}
+            disabled={deleteMutation.isPending}
+          >
+            {deleteMutation.isPending ? 'Đang xóa...' : 'Xóa playlist'}
+          </Button>
+        </ModalSection>
+      </Modal>
     </div>
+      )}
+    </LoadingRegion>
   );
 };

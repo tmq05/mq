@@ -24,10 +24,17 @@ router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', requireAuth, authController.getMe);
 router.patch('/profile', requireAuth, authController.updateProfile);
+router.patch('/avatar', requireAuth, authController.updateAvatar);
 router.post('/change-password', requireAuth, authController.changePassword);
 router.post('/logout-all', requireAuth, authController.logoutAllDevices);
 router.post('/forgot-password', authLimiter, authController.forgotPassword);
 router.post('/reset-password', authLimiter, authController.resetPassword);
+
+// OTP routes (Gmail & SMS)
+router.post('/otp/send', authLimiter, authController.sendOtp);
+router.post('/otp/verify', authLimiter, authController.verifyOtp);
+router.post('/otp/reset-password', authLimiter, authController.resetPasswordWithOtp);
+router.post('/locked-support', authLimiter, authController.submitLockedSupport);
 
 export default router;
 

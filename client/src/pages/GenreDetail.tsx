@@ -4,12 +4,19 @@ import { useQuery } from '@tanstack/react-query';
 import { Play, ArrowLeft, Bookmark, Sparkles, Music2, Users } from 'lucide-react';
 import { api } from '../api/client.js';
 import { SongRow } from '../components/song/SongRow.js';
-import { Button } from '../components/common/Button.js';
 import { usePlayerStore } from '../stores/player-store.js';
-import { useThemeStore } from '../stores/theme-store.js';
 import { formatFollowers, getTrackPlayCount } from '../utils/format.js';
 import { UnifiedTrack } from '../types/index.js';
 import { getGenreGradient } from '../utils/genre-styles.js';
+import { SegmentedTabs, SegmentedTabContent, useTabDirection } from '../components/layout/SegmentedTabs.js';
+import { GenreDetailSkeleton, LoadingRegion } from '../components/common/Loading.js';
+
+const GENRE_DETAIL_TABS = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'popular', label: 'Phổ biến nhất' },
+  { id: 'newest', label: 'Mới phát hành' },
+  { id: 'mood', label: 'Theo tâm trạng' },
+];
 
 interface GenreDetailData {
   genre: {
@@ -37,12 +44,12 @@ type FilterTab = 'all' | 'popular' | 'newest' | 'mood';
 export const GenreDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { playTrack } = usePlayerStore();
-  const { isDark } = useThemeStore();
 
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [isSaved, setIsSaved] = useState(false);
+  const tabDirection = useTabDirection(GENRE_DETAIL_TABS, activeTab);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['genre-detail', slug],
     queryFn: async () => {
       const res = await api.get(`/genres/${slug}`);
@@ -85,43 +92,22 @@ export const GenreDetailPage: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || error || !genre) {
     return (
-      <div className="space-y-8 animate-pulse max-w-7xl mx-auto pb-16">
-        <div className="h-64 sm:h-72 rounded-3xl bg-neutral-200 dark:bg-neutral-800" />
-        <div className="flex gap-4">
-          <div className="w-32 h-10 rounded-pill bg-neutral-200 dark:bg-neutral-800" />
-          <div className="w-24 h-10 rounded-pill bg-neutral-200 dark:bg-neutral-800" />
-        </div>
-        <div className="space-y-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-14 rounded-xl bg-neutral-200 dark:bg-neutral-800" />
-          ))}
-        </div>
-      </div>
+      <LoadingRegion
+        isLoading={isLoading}
+        isError={Boolean(error || (!isLoading && !genre))}
+        onRetry={() => refetch()}
+        skeleton={<GenreDetailSkeleton />}
+        loadingLabel="Đang tải danh sách nhạc theo thể loại"
+        errorTitle="Không tải được thể loại"
+        errorDescription="Thể loại bạn đang tìm kiếm không tồn tại hoặc kết nối bị gián đoạn."
+        className="max-w-7xl mx-auto"
+      >
+        <div />
+      </LoadingRegion>
     );
   }
-
-  if (error || !genre) {
-    return (
-      <div className="py-24 text-center space-y-4 max-w-md mx-auto">
-        <Music2 className="w-12 h-12 text-mute mx-auto stroke-1" />
-        <h2 className="font-display font-bold text-2xl text-ink dark:text-white">
-          Không tìm thấy thể loại nhạc
-        </h2>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Thể loại nhạc này có thể đã bị di chuyển hoặc đường dẫn không chính xác.
-        </p>
-        <Link to="/">
-          <Button size="md" icon={<ArrowLeft className="w-4 h-4 mr-1" />}>
-            Quay lại Khám phá
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-
 
   return (
     <div className="space-y-10 pb-16 max-w-7xl mx-auto">
@@ -250,44 +236,18 @@ export const GenreDetailPage: React.FC = () => {
             </h2>
           </div>
 
-          {/* Filter Chips matching requirements */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-            {[
-              { id: 'all', label: 'Tất cả' },
-              { id: 'popular', label: 'Phổ biến nhất' },
-              { id: 'newest', label: 'Mới phát hành' },
-              { id: 'mood', label: 'Theo tâm trạng' },
-            ].map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as FilterTab)}
-                  data-pill-active={isActive ? 'true' : undefined}
-                  style={
-                    isActive
-                      ? {
-                          backgroundColor: isDark ? '#ffffff' : '#171717',
-                          color: isDark ? '#000000' : '#ffffff',
-                        }
-                      : {}
-                  }
-                  className={`px-3.5 py-1.5 rounded-pill text-xs font-sans transition-all whitespace-nowrap cursor-pointer ${
-                    isActive
-                      ? 'font-bold shadow-sm'
-                      : 'bg-white dark:bg-neutral-800/90 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 font-medium'
-                  }`}
-                >
-                  <span style={isActive ? { color: isDark ? '#000000' : '#ffffff' } : undefined}>
-                    {tab.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {/* Filter Segmented Tabs */}
+          <SegmentedTabs
+            tabs={GENRE_DETAIL_TABS}
+            activeId={activeTab}
+            size="sm"
+            ariaLabel="Lọc bài hát trong thể loại"
+            onChange={(id) => setActiveTab(id as FilterTab)}
+          />
         </div>
 
         {/* Song List */}
+        <SegmentedTabContent activeKey={activeTab} direction={tabDirection}>
         {filteredSongs.length === 0 ? (
           <div className="py-16 text-center space-y-2 text-mute">
             <p className="text-sm">Không có bài hát nào trong bộ lọc này.</p>
@@ -304,6 +264,7 @@ export const GenreDetailPage: React.FC = () => {
             ))}
           </div>
         )}
+        </SegmentedTabContent>
       </section>
     </div>
   );

@@ -1,0 +1,60 @@
+/* ==========================================================================
+   Shared Modal / Dialog Design Tokens — Biến CSS dễ tinh chỉnh
+   ========================================================================== */
+
+:root {
+  --modal-overlay-bg: rgba(0, 0, 0, 0.55);
+  --modal-blur: 8px;
+  --modal-radius: 16px;
+  --modal-bg: #ffffff;
+  --modal-border: rgba(0, 0, 0, 0.09);
+  --modal-shadow: 0 24px 64px -16px rgba(0, 0, 0, 0.24), 0 4px 16px -2px rgba(0, 0, 0, 0.08);
+  --modal-scrollbar-thumb: rgba(0, 0, 0, 0.16);
+}
+
+html.dark,
+.dark {
+  --modal-overlay-bg: rgba(0, 0, 0, 0.65);
+  --modal-bg: #18181b;
+  --modal-border: rgba(255, 255, 255, 0.11);
+  --modal-shadow: 0 28px 72px -16px rgba(0, 0, 0, 0.8), 0 4px 16px -2px rgba(0, 0, 0, 0.5);
+  --modal-scrollbar-thumb: rgba(255, 255, 255, 0.18);
+}
+
+.mq-modal-overlay {
+  background-color: var(--modal-overlay-bg);
+  backdrop-filter: blur(var(--modal-blur));
+  -webkit-backdrop-filter: blur(var(--modal-blur));
+}
+
+.mq-modal-panel {
+  border-radius: var(--modal-radius);
+  background-color: var(--modal-bg);
+  border: 1px solid var(--modal-border);
+  box-shadow: var(--modal-shadow);
+}
+
+.mq-modal-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--modal-scrollbar-thumb) transparent;
+}
+
+.mq-modal-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.mq-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mq-modal-body::-webkit-scrollbar-thumb {
+  background: var(--modal-scrollbar-thumb);
+  border-radius: 9999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mq-modal-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

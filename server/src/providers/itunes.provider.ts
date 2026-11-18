@@ -95,18 +95,69 @@ export class ITunesProvider implements MusicProvider {
       }
 
       if (artistRes.data?.results) {
-        result.artists = artistRes.data.results.map((a: any): UnifiedArtist => ({
-          id: `itunes:${a.artistId}`,
-          source: 'itunes',
-          sourceId: String(a.artistId),
-          name: a.artistName,
-        }));
+        result.artists = artistRes.data.results.map((a: any): UnifiedArtist => {
+          const matchedTrack = result.tracks.find((t) =>
+            t.artists.some((name) => name.toLowerCase() === String(a.artistName || '').toLowerCase())
+          );
+          return {
+            id: `itunes:${a.artistId}`,
+            source: 'itunes',
+            sourceId: String(a.artistId),
+            name: a.artistName,
+            imageUrl: matchedTrack?.coverUrl,
+          };
+        });
       }
     } catch (err: any) {
       logger.warn({ err: err.message }, 'iTunes search error');
     }
 
     return result;
+  }
+
+  async getArtist(
+    sourceId: string
+  ): Promise<(UnifiedArtist & { genre?: string; topTracks: UnifiedTrack[] }) | null> {
+    if (!this.isEnabled) return null;
+    try {
+      const res = await axios.get(`${this.baseUrl}/lookup`, {
+        params: { id: sourceId, entity: 'song', limit: 20 },
+        timeout: 5000,
+      });
+      const results: any[] = res.data?.results || [];
+      if (results.length === 0) return null;
+
+      const artistRow = results.find((r) => r.wrapperType === 'artist') || results[0];
+      const songRows = results.filter((r) => r.wrapperType === 'track');
+      const topTracks: UnifiedTrack[] = songRows.map((item) => this.mapTrack(item));
+
+      await Promise.allSettled(
+        topTracks.slice(0, 5).map(async (t) => {
+          const vid = await resolveExactFullTrack(t.title, t.artists[0] || '');
+          if (vid) {
+            t.embedId = vid;
+            t.playbackType = 'youtube';
+            t.isFullLength = true;
+          }
+        })
+      );
+
+      const name = String(artistRow.artistName || topTracks[0]?.artists?.[0] || '').trim();
+      if (!name) return null;
+
+      return {
+        id: `itunes:${sourceId}`,
+        source: 'itunes',
+        sourceId: String(sourceId),
+        name,
+        genre: artistRow.primaryGenreName || 'Âm nhạc',
+        imageUrl: topTracks[0]?.coverUrl,
+        topTracks,
+      };
+    } catch (err: any) {
+      logger.warn({ err: err.message, sourceId }, 'iTunes getArtist failed');
+    }
+    return null;
   }
 
   async getTrack(sourceId: string): Promise<UnifiedTrack | null> {

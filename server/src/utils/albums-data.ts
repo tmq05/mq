@@ -7,6 +7,7 @@ export interface AlbumMeta {
   artistId: string;
   artistSlug: string;
   coverUrl: string;
+  fallbackCoverUrl?: string;
   releaseDate: string;
   year: number;
   genre: string;
@@ -132,7 +133,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
     artist: 'Vũ.',
     artistId: 'artist-vu',
     artistSlug: 'vu',
-    coverUrl: 'https://i.scdn.co/image/ab67616d0000b273617beeeea19d08e58f007e2c',
+    coverUrl: 'https://i.scdn.co/image/ab67616d0000b2736f76636916ae7d5d930b1656',
     releaseDate: '2024-09-27T00:00:00.000Z',
     year: 2024,
     genre: 'indie-viet',
@@ -151,7 +152,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '4Q2LT8X2cM8',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273617beeeea19d08e58f007e2c',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2736f76636916ae7d5d930b1656',
       },
       {
         id: 'vu-02',
@@ -162,7 +163,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'h6RONxjPBf4',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273617beeeea19d08e58f007e2c',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2736f76636916ae7d5d930b1656',
       },
       {
         id: 'vu-03',
@@ -173,7 +174,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'YCYbLEC9jNE',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273617beeeea19d08e58f007e2c',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2736f76636916ae7d5d930b1656',
       },
       {
         id: 'vu-04',
@@ -184,7 +185,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'F5tS5m86bOI',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273617beeeea19d08e58f007e2c',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2736f76636916ae7d5d930b1656',
       },
       {
         id: 'vu-05',
@@ -195,7 +196,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '61mGk6yK9_U',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273617beeeea19d08e58f007e2c',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2736f76636916ae7d5d930b1656',
       },
       {
         id: 'vu-06',
@@ -206,7 +207,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'vTJdVE_gjI0',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273617beeeea19d08e58f007e2c',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2736f76636916ae7d5d930b1656',
       },
       {
         id: 'vu-07',
@@ -217,7 +218,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'Ws-QlpSltr8',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273617beeeea19d08e58f007e2c',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2736f76636916ae7d5d930b1656',
       },
       {
         id: 'vu-08',
@@ -228,7 +229,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '4jZ_p5KxWv8',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273617beeeea19d08e58f007e2c',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2736f76636916ae7d5d930b1656',
       },
       {
         id: 'vu-09',
@@ -239,7 +240,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '7gKkWpU-v78',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273617beeeea19d08e58f007e2c',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2736f76636916ae7d5d930b1656',
       },
       {
         id: 'vu-10',
@@ -250,7 +251,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'c4N3oV96yD0',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273617beeeea19d08e58f007e2c',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2736f76636916ae7d5d930b1656',
       },
     ],
   },
@@ -260,7 +261,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
     artist: 'HIEUTHUHAI',
     artistId: 'artist-hieuthuhai',
     artistSlug: 'hieuthuhai',
-    coverUrl: 'https://i.scdn.co/image/ab67616d0000b27376c927fec062400f86b47ba9',
+    coverUrl: 'https://i.scdn.co/image/ab67616d0000b273c006b0181a3846c1c63e178f',
     releaseDate: '2023-10-15T00:00:00.000Z',
     year: 2023,
     genre: 'rap-viet',
@@ -279,7 +280,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'd6pgocXnK8U',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27376c927fec062400f86b47ba9',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273c006b0181a3846c1c63e178f',
       },
       {
         id: 'hieu-02',
@@ -290,7 +291,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '1OJQdxT6WHE',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27376c927fec062400f86b47ba9',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273c006b0181a3846c1c63e178f',
       },
       {
         id: 'hieu-03',
@@ -301,7 +302,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'jXciGNaIoag',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27376c927fec062400f86b47ba9',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273c006b0181a3846c1c63e178f',
       },
       {
         id: 'hieu-04',
@@ -312,7 +313,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'R6p6c-feIqw',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27376c927fec062400f86b47ba9',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273c006b0181a3846c1c63e178f',
       },
       {
         id: 'hieu-05',
@@ -323,7 +324,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'Zl97G-eD9j0',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27376c927fec062400f86b47ba9',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273c006b0181a3846c1c63e178f',
       },
       {
         id: 'hieu-06',
@@ -334,7 +335,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'Ws-QlpSltr8',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27376c927fec062400f86b47ba9',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273c006b0181a3846c1c63e178f',
       },
       {
         id: 'hieu-07',
@@ -345,7 +346,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'dK89lZ59c8g',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27376c927fec062400f86b47ba9',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273c006b0181a3846c1c63e178f',
       },
       {
         id: 'hieu-08',
@@ -356,7 +357,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'WCm2elbTEZQ',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27376c927fec062400f86b47ba9',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273c006b0181a3846c1c63e178f',
       },
     ],
   },
@@ -366,7 +367,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
     artist: 'RPT MCK',
     artistId: 'artist-rpt-mck',
     artistSlug: 'rpt-mck',
-    coverUrl: 'https://i.scdn.co/image/ab67616d0000b273d4dfb5dbefab4a0e447545b7',
+    coverUrl: 'https://i.scdn.co/image/ab67616d0000b273fb24fcf5cd43a2bbc3dfa99f',
     releaseDate: '2023-03-02T00:00:00.000Z',
     year: 2023,
     genre: 'rap-viet',
@@ -385,7 +386,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'Yw9Ra2UiVLw',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273d4dfb5dbefab4a0e447545b7',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273fb24fcf5cd43a2bbc3dfa99f',
       },
       {
         id: 'mck-02',
@@ -396,7 +397,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'IE02GRUWnOw',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273d4dfb5dbefab4a0e447545b7',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273fb24fcf5cd43a2bbc3dfa99f',
       },
       {
         id: 'mck-03',
@@ -407,7 +408,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '1jTSZWRFEB8',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273d4dfb5dbefab4a0e447545b7',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273fb24fcf5cd43a2bbc3dfa99f',
       },
       {
         id: 'mck-04',
@@ -418,7 +419,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '5WkwBKu1le0',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273d4dfb5dbefab4a0e447545b7',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273fb24fcf5cd43a2bbc3dfa99f',
       },
       {
         id: 'mck-05',
@@ -429,7 +430,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'dz6xe0xXqYE',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273d4dfb5dbefab4a0e447545b7',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273fb24fcf5cd43a2bbc3dfa99f',
       },
       {
         id: 'mck-06',
@@ -440,7 +441,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '9f1u_U3Hvf4',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273d4dfb5dbefab4a0e447545b7',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273fb24fcf5cd43a2bbc3dfa99f',
       },
     ],
   },
@@ -450,7 +451,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
     artist: 'MONO',
     artistId: 'artist-mono',
     artistSlug: 'mono',
-    coverUrl: 'https://i.scdn.co/image/ab67616d0000b2730a905be70d2bfcfcfbc2db20',
+    coverUrl: 'https://i.scdn.co/image/ab67616d0000b27326bdc40396b29e4218138850',
     releaseDate: '2022-08-18T00:00:00.000Z',
     year: 2022,
     genre: 'v-pop',
@@ -469,7 +470,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'CHw1b_1LVBA',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2730a905be70d2bfcfcfbc2db20',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27326bdc40396b29e4218138850',
       },
       {
         id: 'mono-02',
@@ -480,7 +481,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'sRUoOA21ZFI',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2730a905be70d2bfcfcfbc2db20',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27326bdc40396b29e4218138850',
       },
       {
         id: 'mono-03',
@@ -491,7 +492,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'Wsl5-SYE9gg',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2730a905be70d2bfcfcfbc2db20',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27326bdc40396b29e4218138850',
       },
       {
         id: 'mono-04',
@@ -502,7 +503,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'KLZgIuTQDA4',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2730a905be70d2bfcfcfbc2db20',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27326bdc40396b29e4218138850',
       },
       {
         id: 'mono-05',
@@ -513,7 +514,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'fyf8z1njZs4',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2730a905be70d2bfcfcfbc2db20',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27326bdc40396b29e4218138850',
       },
       {
         id: 'mono-06',
@@ -524,7 +525,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '2jY2F_C6gBM',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2730a905be70d2bfcfcfbc2db20',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27326bdc40396b29e4218138850',
       },
     ],
   },
@@ -534,7 +535,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
     artist: 'GREY D',
     artistId: 'artist-grey-d',
     artistSlug: 'grey-d',
-    coverUrl: 'https://i.scdn.co/image/ab67616d0000b2731c3bf798a38758b9bbcd2ae0',
+    coverUrl: 'https://i.scdn.co/image/ab67616d0000b27312a6bd687aec4105bc06fcdf',
     releaseDate: '2022-11-22T00:00:00.000Z',
     year: 2022,
     genre: 'v-pop',
@@ -553,7 +554,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '2iidlwQ-NfU',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2731c3bf798a38758b9bbcd2ae0',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27312a6bd687aec4105bc06fcdf',
       },
       {
         id: 'greyd-02',
@@ -564,7 +565,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'c4MKfX6qSxE',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2731c3bf798a38758b9bbcd2ae0',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27312a6bd687aec4105bc06fcdf',
       },
       {
         id: 'greyd-03',
@@ -575,7 +576,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'wvcSGGdnnII',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2731c3bf798a38758b9bbcd2ae0',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27312a6bd687aec4105bc06fcdf',
       },
       {
         id: 'greyd-04',
@@ -586,7 +587,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'sXla4x9H2zA',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2731c3bf798a38758b9bbcd2ae0',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27312a6bd687aec4105bc06fcdf',
       },
     ],
   },
@@ -596,7 +597,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
     artist: 'AMEE',
     artistId: 'artist-amee',
     artistSlug: 'amee',
-    coverUrl: 'https://i.scdn.co/image/ab67616d0000b2737ef2427a19ff4514da0750fc',
+    coverUrl: 'https://i.scdn.co/image/ab67616d0000b273819219f4ea0ad1e11cb78411',
     releaseDate: '2020-06-28T00:00:00.000Z',
     year: 2020,
     genre: 'v-pop',
@@ -615,7 +616,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'RlBkvjVss-s',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2737ef2427a19ff4514da0750fc',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273819219f4ea0ad1e11cb78411',
       },
       {
         id: 'amee-02',
@@ -626,7 +627,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'iE52-XXnQqs',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2737ef2427a19ff4514da0750fc',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273819219f4ea0ad1e11cb78411',
       },
       {
         id: 'amee-03',
@@ -637,7 +638,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'QHDkHZPHzC0',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2737ef2427a19ff4514da0750fc',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273819219f4ea0ad1e11cb78411',
       },
       {
         id: 'amee-04',
@@ -648,7 +649,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'ZwDxaM5VBJM',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2737ef2427a19ff4514da0750fc',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273819219f4ea0ad1e11cb78411',
       },
     ],
   },
@@ -658,7 +659,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
     artist: 'Hoàng Dũng',
     artistId: 'artist-hoang-dung',
     artistSlug: 'hoang-dung',
-    coverUrl: 'https://i.scdn.co/image/ab67616d0000b273e970bcf3b0d2d2a45d0f6ee8',
+    coverUrl: 'https://i.scdn.co/image/ab67616d0000b2735a6bc1ecf16bbac5734f23da',
     releaseDate: '2020-12-16T00:00:00.000Z',
     year: 2020,
     genre: 'ballad',
@@ -677,7 +678,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '0SJAzTGh1SE',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273e970bcf3b0d2d2a45d0f6ee8',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2735a6bc1ecf16bbac5734f23da',
       },
       {
         id: 'hd-02',
@@ -688,7 +689,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'WgYQhO5D9uk',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273e970bcf3b0d2d2a45d0f6ee8',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2735a6bc1ecf16bbac5734f23da',
       },
       {
         id: 'hd-03',
@@ -699,7 +700,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '7JkM3t8g-m4',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273e970bcf3b0d2d2a45d0f6ee8',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2735a6bc1ecf16bbac5734f23da',
       },
       {
         id: 'hd-04',
@@ -710,7 +711,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '0chK12qHGfM',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273e970bcf3b0d2d2a45d0f6ee8',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2735a6bc1ecf16bbac5734f23da',
       },
     ],
   },
@@ -720,7 +721,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
     artist: 'Low G',
     artistId: 'artist-low-g',
     artistSlug: 'low-g',
-    coverUrl: 'https://i.scdn.co/image/ab67616d0000b2738947f6d34e9e044321db87cb',
+    coverUrl: 'https://i.scdn.co/image/ab67616d0000b27323cf61113b6f831989e68725',
     releaseDate: '2024-10-10T00:00:00.000Z',
     year: 2024,
     genre: 'rap-viet',
@@ -739,7 +740,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'DcCISK3sCYg',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2738947f6d34e9e044321db87cb',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27323cf61113b6f831989e68725',
       },
       {
         id: 'lowg-02',
@@ -750,7 +751,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'yZW8jzWb5yA',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2738947f6d34e9e044321db87cb',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27323cf61113b6f831989e68725',
       },
       {
         id: 'lowg-03',
@@ -761,7 +762,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'wKiSIO6Tffo',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2738947f6d34e9e044321db87cb',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27323cf61113b6f831989e68725',
       },
       {
         id: 'lowg-04',
@@ -772,7 +773,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '6aBnhxRvmok',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b2738947f6d34e9e044321db87cb',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b27323cf61113b6f831989e68725',
       },
     ],
   },
@@ -970,7 +971,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
     artist: 'Alan Walker',
     artistId: 'artist-alan-walker',
     artistSlug: 'alan-walker',
-    coverUrl: 'https://i.scdn.co/image/ab67616d0000b273a108e07c661f9e54a993717e',
+    coverUrl: 'https://i.scdn.co/image/ab67616d0000b273a108e07c661f9fc54de9c43a',
     releaseDate: '2018-12-14T00:00:00.000Z',
     year: 2018,
     genre: 'edm',
@@ -989,7 +990,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: '60ItHLz5WEA',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273a108e07c661f9e54a993717e',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273a108e07c661f9fc54de9c43a',
       },
       {
         id: 'aw-02',
@@ -1000,7 +1001,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'FbQD8uBx8Uc',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273a108e07c661f9e54a993717e',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273a108e07c661f9fc54de9c43a',
       },
       {
         id: 'aw-03',
@@ -1011,7 +1012,7 @@ export const ALBUMS_CATALOG: AlbumMeta[] = [
         playbackType: 'youtube',
         embedId: 'wJnBTPUQS5A',
         isFullLength: true,
-        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273a108e07c661f9e54a993717e',
+        coverUrl: 'https://i.scdn.co/image/ab67616d0000b273a108e07c661f9fc54de9c43a',
       },
     ],
   },

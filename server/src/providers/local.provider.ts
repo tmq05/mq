@@ -59,6 +59,7 @@ export class LocalProvider implements MusicProvider {
           FROM songs s
           LEFT JOIN artists a ON s."artistId" = a.id
           WHERE s.source = 'local'
+            AND s."isHidden" = false
             AND (
               unaccent(s.title) ILIKE unaccent(${'%' + cleanQuery + '%'})
               OR EXISTS (
@@ -75,6 +76,7 @@ export class LocalProvider implements MusicProvider {
         const songs = await prisma.song.findMany({
           where: {
             source: 'local',
+            isHidden: false,
             OR: [
               { title: { contains: query, mode: 'insensitive' } },
               { artists: { hasSome: [query] } },
@@ -194,7 +196,7 @@ export class LocalProvider implements MusicProvider {
 
   async getTrending(): Promise<UnifiedTrack[]> {
     const songs = await prisma.song.findMany({
-      where: { source: 'local' },
+      where: { source: 'local', isHidden: false },
       orderBy: { playCount: 'desc' },
       take: 15,
       include: { artist: true, albumRef: true },
